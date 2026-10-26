@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<CommunityApplications>
+  <Profile>Kardo is a self-hosted spaced-repetition flashcard server. It imports Anki .apkg decks and CSV files, runs as one small container with a single SQLite database, and installs on iPhone and Android as a Home Screen app. Support and bug reports go to the GitHub issue tracker.</Profile>
+  <Icon>https://raw.githubusercontent.com/Echosky/kardo/main/static/icons/icon-512.png</Icon>
+  <WebPage>https://github.com/Echosky/kardo</WebPage>
+</CommunityApplications>

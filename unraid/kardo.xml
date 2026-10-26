@@ -8,11 +8,16 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Echosky/kardo/issues</Support>
   <Project>https://github.com/Echosky/kardo</Project>
-  <Overview>Self-hosted spaced-repetition flashcards. Imports Anki .apkg decks (subdecks, styling, images, audio, cloze) and CSV files, and runs as an installable web app on iPhone and Android. One small container, one SQLite file, no accounts. Not affiliated with Anki.</Overview>
-  <Category>Productivity: Tools:</Category>
-  <WebUI>http://[IP]:[PORT:8484]/</WebUI>
+  <ReadMe>https://github.com/Echosky/kardo#readme</ReadMe>
+  <TemplateURL>https://raw.githubusercontent.com/Echosky/kardo/main/unraid/kardo.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/Echosky/kardo/main/static/icons/icon-512.png</Icon>
-  <ExtraParams>--restart unless-stopped</ExtraParams>
-  <Config Name="Web UI port" Target="8484" Default="8484" Mode="tcp" Description="Port the web app listens on." Type="Port" Display="always" Required="true" Mask="false">8484</Config>
-  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/kardo" Mode="rw" Description="Decks, media and review history (kardo.db)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/kardo</Config>
+  <Overview>Self-hosted spaced-repetition flashcards. Import Anki .apkg decks (subdecks, card styling, images, audio, cloze) or CSV files and study them from any browser, or add Kardo to your iPhone or Android Home Screen so it opens like an app. One small container, one SQLite file, no accounts and no outbound connections. Includes statistics, practice quizzes, a card browser, one-tap backup and an optional SQL practice lab. Kardo has no login of its own: keep it on your LAN or tailnet, or behind an authenticating reverse proxy. Not affiliated with Anki.</Overview>
+  <Category>Productivity: Tools: Other:</Category>
+  <WebUI>http://[IP]:[PORT:8484]/</WebUI>
+  <ExtraSearchTerms>anki flashcards spaced repetition srs study apkg</ExtraSearchTerms>
+  <Screenshot>https://raw.githubusercontent.com/Echosky/kardo/main/docs/screenshots/01-decks.png</Screenshot>
+  <Screenshot>https://raw.githubusercontent.com/Echosky/kardo/main/docs/screenshots/03-flag-answer.png</Screenshot>
+  <Screenshot>https://raw.githubusercontent.com/Echosky/kardo/main/docs/screenshots/10-stats.png</Screenshot>
+  <Config Name="Web UI port" Target="8484" Default="8484" Mode="tcp" Description="Port for the web app. Change the host side if 8484 is already used on your server." Type="Port" Display="always" Required="true" Mask="false">8484</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/kardo" Mode="rw" Description="Decks, media and review history (kardo.db). Back this folder up." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/kardo</Config>
 </Container>
