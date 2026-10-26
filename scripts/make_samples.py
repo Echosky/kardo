@@ -45,6 +45,7 @@ H = "h"   # horizontal stripes, top to bottom
 V = "v"   # vertical stripes, left to right
 N = "n"   # Nordic cross: field, cross, optional inner cross
 C = "c"   # disc on a field
+L = "l"   # Canada: red bars, white square, red maple leaf
 COUNTRIES = [
     ("France", "Paris", "Europe", (V, "#002654", "#ffffff", "#ce1126")),
     ("Italy", "Rome", "Europe", (V, "#008c45", "#f4f5f0", "#cd212a")),
@@ -70,14 +71,25 @@ COUNTRIES = [
     ("Indonesia", "Jakarta", "Asia", (H, "#ce1126", "#ffffff")),
     ("Yemen", "Sanaa", "Asia", (H, "#ce1126", "#ffffff", "#000000")),
     ("Nigeria", "Abuja", "Africa", (V, "#008751", "#ffffff", "#008751")),
-    ("Mali", "Bamako", "Africa", (V, "#14b53a", "#fcd116", "#ce1126")),
     ("Guinea", "Conakry", "Africa", (V, "#ce1126", "#fcd116", "#009460")),
     ("Chad", "N'Djamena", "Africa", (V, "#002664", "#fecb00", "#c60c30")),
     ("Sierra Leone", "Freetown", "Africa", (H, "#1eb53a", "#ffffff", "#0072c6")),
     ("Gabon", "Libreville", "Africa", (H, "#009e60", "#fcd116", "#3a75c4")),
+    ("Canada", "Ottawa", "North America", (L, "#d52b1e", "#ffffff")),
     ("Peru", "Lima", "South America", (V, "#d91023", "#ffffff", "#d91023")),
     ("Colombia", "Bogotá", "South America", (H, "#fcd116", "#fcd116", "#003893", "#ce1126")),
 ]
+
+
+# right half of a simplified maple leaf, (x, y) with y pointing up and the leaf about 1 unit tall
+LEAF = [(0, .50), (.07, .36), (.15, .40), (.12, .12), (.30, .30), (.34, .22), (.48, .25), (.42, .10),
+        (.47, .06), (.25, -.12), (.28, -.20), (.03, -.17), (.035, -.45), (0, -.45)]
+
+
+def maple_leaf(cx, cy, size):
+    right = [(cx + x * size, cy - y * size) for x, y in LEAF]
+    left = [(cx - x * size, cy - y * size) for x, y in reversed(LEAF)]
+    return right + left
 
 
 def draw_flag(design, path, w=600, h=400):
@@ -98,6 +110,9 @@ def draw_flag(design, path, w=600, h=400):
             inner = bar // 2
             d.rectangle([x + (bar - inner) // 2, 0, x + (bar + inner) // 2, h], fill=cols[2])
             d.rectangle([0, (h - inner) // 2, w, (h + inner) // 2], fill=cols[2])
+    elif kind == L:
+        d.rectangle([w // 4, 0, w * 3 // 4, h], fill=cols[1])
+        d.polygon(maple_leaf(w / 2, h * 0.52, h * 0.78), fill=cols[0])
     elif kind == C:
         r = h * 3 // 10
         cx = w // 2 - (w // 20 if cols[0] != "#ffffff" else 0)

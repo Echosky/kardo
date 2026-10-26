@@ -22,11 +22,11 @@ A card object looks like:
 ```json
 {
   "id": 412,
-  "front": "<div class=\"flag\"><img src=\"/media/kardo_flag_mali.png\"></div>…",
-  "back": "…<hr id=\"answer\"><div class=\"answer\">Mali</div>…",
+  "front": "<div class=\"flag\"><img src=\"/media/kardo_flag_canada.png\"></div>…",
+  "back": "…<hr id=\"answer\"><div class=\"answer\">Canada</div>…",
   "css": ".card { … }",
   "deck": "Geography::Flags & Capitals",
-  "tags": ["africa", "geography"],
+  "tags": ["geography", "north_america"],
   "state": "review",
   "intervals": {"1": "10m", "2": "6d", "3": "13d", "4": "21d"}
 }
