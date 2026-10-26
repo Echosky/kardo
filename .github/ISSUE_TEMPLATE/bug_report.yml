@@ -1,0 +1,37 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Importing a deck, Studying / scheduling, Statistics, Browse, Settings, SQL Lab, Installation / Docker, Other]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Kardo version or image tag
+      placeholder: "ghcr.io/echosky/kardo:latest (sha-abc1234)"
+  - type: input
+    id: client
+    attributes:
+      label: Device and browser
+      placeholder: "iPhone 15, iOS 18, Home Screen app"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server log
+      description: Output of `docker logs kardo` around the time of the problem.
+      render: text
+  - type: markdown
+    attributes:
+      value: For import problems, attaching a small `.apkg` that reproduces it is the fastest way to a fix.

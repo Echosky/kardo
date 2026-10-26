@@ -1,0 +1,10 @@
+__pycache__/
+*.db
+*.db-*
+.git/
+.github/
+docs/
+tests/
+scripts/
+samples/
+data/

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>kardo</Name>
+  <Repository>ghcr.io/echosky/kardo:latest</Repository>
+  <Registry>https://github.com/Echosky/kardo/pkgs/container/kardo</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Echosky/kardo/issues</Support>
+  <Project>https://github.com/Echosky/kardo</Project>
+  <Overview>Self-hosted spaced-repetition flashcards. Imports Anki .apkg decks (subdecks, styling, images, audio, cloze) and CSV files, and runs as an installable web app on iPhone and Android. One small container, one SQLite file, no accounts. Not affiliated with Anki.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8484]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/Echosky/kardo/main/static/icons/icon-512.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <Config Name="Web UI port" Target="8484" Default="8484" Mode="tcp" Description="Port the web app listens on." Type="Port" Display="always" Required="true" Mask="false">8484</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/kardo" Mode="rw" Description="Decks, media and review history (kardo.db)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/kardo</Config>
+</Container>

@@ -1,0 +1,19 @@
+# Kardo with Docker Compose:  docker compose up -d
+# Then open http://<server>:8484
+services:
+  kardo:
+    image: ghcr.io/echosky/kardo:latest
+    # or build from this folder instead of pulling:
+    # build: .
+    container_name: kardo
+    restart: unless-stopped
+    ports:
+      - "8484:8484"
+    volumes:
+      # Decks, media and review history. On Unraid use /mnt/user/appdata/kardo:/data
+      - ./data:/data
+    # The image runs as uid 99 / gid 100 (Unraid's nobody:users). On another Linux host,
+    # either `sudo chown 99:100 ./data` once, or run as your own user:
+    # user: "1000:1000"
+    environment:
+      - TZ=UTC

@@ -1,0 +1,1446 @@
+# SQL Lab exercises for Kardo.
+# Format: "=== id | Track | Title", then the prompt, then "--- hint", "--- solution",
+# optional "--- check" (a query run after the learner's statements, for DML/DDL tasks),
+# optional "--- setup" (run first, for both learner and solution) and "--- options" (ordered).
+# Column names don't have to match; column order, row values and (when ordered) row order do.
+
+=== f01 | 01 Foundations | Your first SELECT
+Return every column and every row from `categories`.
+--- hint
+`SELECT * FROM table_name` returns all columns.
+--- solution
+SELECT * FROM categories;
+
+=== f02 | 01 Foundations | Pick columns
+Return `first_name`, `last_name` and `country` for every customer.
+--- hint
+List the columns after SELECT, separated by commas.
+--- solution
+SELECT first_name, last_name, country FROM customers;
+
+=== f03 | 01 Foundations | Filter with WHERE
+Return `product_id`, `name` and `unit_price` of products that cost more than 500.
+--- hint
+`WHERE unit_price > 500`
+--- solution
+SELECT product_id, name, unit_price FROM products WHERE unit_price > 500;
+
+=== f04 | 01 Foundations | Combine conditions
+Return the `customer_id`, `first_name` and `city` of customers in country `UK` who are in the `small_business` segment.
+--- hint
+Join two conditions with AND. Text values go in single quotes.
+--- solution
+SELECT customer_id, first_name, city FROM customers WHERE country = 'UK' AND segment = 'small_business';
+
+=== f05 | 01 Foundations | IN list
+Return all columns of orders whose `status` is `cancelled` or `returned`.
+--- hint
+`status IN ('cancelled', 'returned')` is shorter than two ORs.
+--- solution
+SELECT * FROM orders WHERE status IN ('cancelled', 'returned');
+
+=== f06 | 01 Foundations | BETWEEN
+Return `order_id` and `order_date` for orders placed in March 2025 (from 2025-03-01 to 2025-03-31 inclusive).
+--- hint
+Dates are stored as ISO text ('YYYY-MM-DD'), which sorts correctly, so `BETWEEN '2025-03-01' AND '2025-03-31'` works.
+--- solution
+SELECT order_id, order_date FROM orders WHERE order_date BETWEEN '2025-03-01' AND '2025-03-31';
+
+=== f07 | 01 Foundations | Pattern matching with LIKE
+Return the `name` of every product whose name contains the word `Phone` (any position).
+--- hint
+`%` matches any run of characters: `LIKE '%Phone%'`.
+--- solution
+SELECT name FROM products WHERE name LIKE '%Phone%';
+
+=== f08 | 01 Foundations | Sort and limit
+Return the `name` and `unit_price` of the 5 most expensive products, most expensive first.
+--- hint
+ORDER BY unit_price DESC, then LIMIT 5.
+--- solution
+SELECT name, unit_price FROM products ORDER BY unit_price DESC LIMIT 5;
+--- options
+ordered
+
+=== f09 | 01 Foundations | Sort by two columns
+Return `country`, `city`, `last_name` for all customers, sorted by country A to Z, then city A to Z, then last name A to Z. Include customers whose city is missing.
+--- hint
+ORDER BY takes a list. In SQLite NULLs sort first in ascending order (Postgres and Snowflake put them last).
+--- solution
+SELECT country, city, last_name FROM customers ORDER BY country, city, last_name;
+--- options
+ordered
+
+=== f10 | 01 Foundations | DISTINCT
+Return the distinct list of `channel` values used in orders.
+--- hint
+`SELECT DISTINCT ...`
+--- solution
+SELECT DISTINCT channel FROM orders;
+
+=== f11 | 01 Foundations | Calculated columns
+For every order item, return `order_id`, `line_no` and the line amount `quantity * unit_price * (1 - discount)` rounded to 2 decimals, named `line_amount`.
+--- hint
+`ROUND(expression, 2) AS line_amount`
+--- solution
+SELECT order_id, line_no, ROUND(quantity * unit_price * (1 - discount), 2) AS line_amount FROM order_items;
+
+=== f12 | 01 Foundations | Margin per product
+Return `name`, `unit_price`, `unit_cost` and the margin percentage `(unit_price - unit_cost) / unit_price * 100` rounded to 1 decimal as `margin_pct`, for products that are not discontinued (`discontinued = 0`), highest margin first.
+--- solution
+SELECT name, unit_price, unit_cost, ROUND((unit_price - unit_cost) / unit_price * 100, 1) AS margin_pct
+FROM products WHERE discontinued = 0 ORDER BY margin_pct DESC;
+--- options
+ordered
+
+=== n01 | 02 NULLs and CASE | Find missing values
+Return `customer_id`, `first_name`, `last_name` of customers with no email address.
+--- hint
+`= NULL` is never true. Use `IS NULL`.
+--- solution
+SELECT customer_id, first_name, last_name FROM customers WHERE email IS NULL;
+
+=== n02 | 02 NULLs and CASE | Fill in blanks with COALESCE
+Return `customer_id` and the city, showing `Unknown` when city is missing, as `city`.
+--- hint
+`COALESCE(city, 'Unknown')` returns the first non-NULL argument.
+--- solution
+SELECT customer_id, COALESCE(city, 'Unknown') AS city FROM customers;
+
+=== n03 | 02 NULLs and CASE | The NOT IN trap
+How many customers were NOT referred by customer 12? Count customers where `referred_by` is anything other than 12, including customers with no referrer. Return a single number.
+--- hint
+`referred_by <> 12` is UNKNOWN when referred_by is NULL, so those rows drop out. Add `OR referred_by IS NULL`, or use `IS NOT 12` (SQLite) / `IS DISTINCT FROM 12` (Postgres, Snowflake).
+--- solution
+SELECT COUNT(*) FROM customers WHERE referred_by IS NOT 12;
+
+=== n04 | 02 NULLs and CASE | Bucket with CASE
+Return `name`, `unit_price` and a `price_band` for every product: `budget` under 50, `mid` from 50 up to (not including) 300, `premium` from 300.
+--- hint
+`CASE WHEN ... THEN ... WHEN ... THEN ... ELSE ... END`. The first matching WHEN wins.
+--- solution
+SELECT name, unit_price,
+  CASE WHEN unit_price < 50 THEN 'budget' WHEN unit_price < 300 THEN 'mid' ELSE 'premium' END AS price_band
+FROM products;
+
+=== n05 | 02 NULLs and CASE | NULLIF to avoid dividing by zero
+Return `product_id` and `unit_cost / unit_price` as `cost_ratio` rounded to 3 decimals, but use NULLIF so a zero price would give NULL instead of an error. (There are no zero prices here; the point is the pattern.)
+--- solution
+SELECT product_id, ROUND(unit_cost / NULLIF(unit_price, 0), 3) AS cost_ratio FROM products;
+
+=== n06 | 02 NULLs and CASE | Conditional counting
+In one row, return the number of orders per status family: `ok_orders` (completed or shipped), `problem_orders` (cancelled or returned) and `open_orders` (pending).
+--- hint
+`SUM(CASE WHEN status IN (...) THEN 1 ELSE 0 END)`. In Postgres you could also write `COUNT(*) FILTER (WHERE ...)`.
+--- solution
+SELECT SUM(CASE WHEN status IN ('completed','shipped') THEN 1 ELSE 0 END) AS ok_orders,
+       SUM(CASE WHEN status IN ('cancelled','returned') THEN 1 ELSE 0 END) AS problem_orders,
+       SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS open_orders
+FROM orders;
+
+=== n07 | 02 NULLs and CASE | COUNT(*) vs COUNT(column)
+Return three numbers from `customers`: total rows, rows with an email, and rows with a city.
+--- hint
+`COUNT(column)` skips NULLs.
+--- solution
+SELECT COUNT(*), COUNT(email), COUNT(city) FROM customers;
+
+=== n08 | 02 NULLs and CASE | Custom sort order
+List `order_id`, `status` for orders placed on or after 2025-12-20, sorted so `pending` comes first, then `shipped`, then everything else, and by `order_id` within each group.
+--- hint
+You can ORDER BY a CASE expression.
+--- solution
+SELECT order_id, status FROM orders WHERE order_date >= '2025-12-20'
+ORDER BY CASE status WHEN 'pending' THEN 1 WHEN 'shipped' THEN 2 ELSE 3 END, order_id;
+--- options
+ordered
+
+=== j01 | 03 Joins | Inner join
+Return `order_id`, `order_date` and the customer's `first_name` and `last_name` for every order.
+--- hint
+`FROM orders o JOIN customers c ON c.customer_id = o.customer_id`
+--- solution
+SELECT o.order_id, o.order_date, c.first_name, c.last_name
+FROM orders o JOIN customers c ON c.customer_id = o.customer_id;
+
+=== j02 | 03 Joins | Three tables
+Return `order_id`, product `name` and `quantity` for every order line in order 100.
+--- solution
+SELECT oi.order_id, p.name, oi.quantity
+FROM order_items oi JOIN products p ON p.product_id = oi.product_id
+WHERE oi.order_id = 100;
+
+=== j03 | 03 Joins | LEFT JOIN keeps unmatched rows
+Return every customer's `customer_id` with the `order_id` of each of their orders. Customers who never ordered must still appear once, with a NULL order_id.
+--- hint
+LEFT JOIN keeps every row from the left table.
+--- solution
+SELECT c.customer_id, o.order_id FROM customers c LEFT JOIN orders o ON o.customer_id = c.customer_id;
+
+=== j04 | 03 Joins | Anti-join: never ordered
+Return `customer_id`, `first_name`, `last_name` of customers who have never placed an order.
+--- hint
+LEFT JOIN orders and keep rows WHERE the order key IS NULL, or use NOT EXISTS.
+--- solution
+SELECT c.customer_id, c.first_name, c.last_name
+FROM customers c LEFT JOIN orders o ON o.customer_id = c.customer_id
+WHERE o.order_id IS NULL;
+
+=== j05 | 03 Joins | Unsold products
+Return the `product_id` and `name` of products that have never been ordered.
+--- solution
+SELECT p.product_id, p.name FROM products p
+WHERE NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.product_id = p.product_id);
+
+=== j06 | 03 Joins | The WHERE-on-the-right-table trap
+Return every customer from country `DE` with the number of `app` orders they placed, as `customer_id, app_orders`. Customers with zero app orders must show 0.
+--- hint
+If you filter `o.channel = 'app'` in WHERE, the LEFT JOIN turns into an inner join. Put that condition in the ON clause.
+--- solution
+SELECT c.customer_id, COUNT(o.order_id) AS app_orders
+FROM customers c LEFT JOIN orders o ON o.customer_id = c.customer_id AND o.channel = 'app'
+WHERE c.country = 'DE'
+GROUP BY c.customer_id;
+
+=== j07 | 03 Joins | Self join: who's your manager?
+Return each employee's `full_name` and their manager's `full_name` as `manager`. The CEO has no manager and should still appear with NULL.
+--- solution
+SELECT e.full_name, m.full_name AS manager
+FROM employees e LEFT JOIN employees m ON m.employee_id = e.manager_id;
+
+=== j08 | 03 Joins | Self join: who referred whom
+Return `customer_id`, `first_name` and the referrer's `first_name` as `referred_by_name` for customers who were referred, but only where the referrer is in a different country than the customer.
+--- solution
+SELECT c.customer_id, c.first_name, r.first_name AS referred_by_name
+FROM customers c JOIN customers r ON r.customer_id = c.referred_by
+WHERE r.country <> c.country;
+
+=== j09 | 03 Joins | Category with parent
+Return each category's `name` and its parent category's `name` as `parent` (NULL for top-level ones).
+--- solution
+SELECT c.name, p.name AS parent FROM categories c LEFT JOIN categories p ON p.category_id = c.parent_id;
+
+=== j10 | 03 Joins | Cross join
+Every product in category 6 (Headphones) could be offered in every country. Return all `(country, product name)` pairs for the countries that appear in `customers`.
+--- hint
+Get the distinct countries first, then CROSS JOIN them with the products.
+--- solution
+SELECT c.country, p.name
+FROM (SELECT DISTINCT country FROM customers) c CROSS JOIN products p
+WHERE p.category_id = 6;
+
+=== j11 | 03 Joins | Join fan-out
+Joining `order_items` and `payments` to the same order multiplies rows, which inflates any SUM. For orders that have more than one payment, return `order_id`, the number of order lines `lines`, the number of payments `payments`, and the row count you get from joining both to the order `joined_rows`.
+--- hint
+Joining two child tables to one parent multiplies rows (lines × payments). Count each child separately, then compare with COUNT(*) of the double join.
+--- solution
+SELECT o.order_id,
+  (SELECT COUNT(*) FROM order_items i WHERE i.order_id = o.order_id) AS lines,
+  (SELECT COUNT(*) FROM payments p WHERE p.order_id = o.order_id) AS payments,
+  (SELECT COUNT(*) FROM order_items i JOIN payments p ON p.order_id = i.order_id WHERE i.order_id = o.order_id) AS joined_rows
+FROM orders o
+WHERE (SELECT COUNT(*) FROM payments p WHERE p.order_id = o.order_id) > 1;
+
+=== j12 | 03 Joins | Store sales by associate
+Return each employee in the `Sales` department with title containing `Associate`, and how many store orders they handled, as `full_name, store_orders`, including associates with none.
+--- solution
+SELECT e.full_name, COUNT(o.order_id) AS store_orders
+FROM employees e LEFT JOIN orders o ON o.employee_id = e.employee_id
+WHERE e.department = 'Sales' AND e.title LIKE '%Associate%'
+GROUP BY e.employee_id, e.full_name;
+
+=== j13 | 03 Joins | Full outer join
+Compare customers (`customer_id`) with CRM contacts. CRM ids look like `C-00042`. Return each distinct customer id that appears in either source, as `customer_id, in_shop, in_crm` where the flags are 1 or 0.
+--- hint
+Turn `C-00042` into 42 with `CAST(SUBSTR(contact_id, 3) AS INTEGER)`. SQLite 3.39+ supports FULL OUTER JOIN; the result here has as many rows as customers since every CRM contact is a customer. Remember to dedupe the CRM side first and skip blank ids.
+--- solution
+WITH crm AS (
+  SELECT DISTINCT CAST(SUBSTR(contact_id, 3) AS INTEGER) AS customer_id
+  FROM raw_crm_contacts WHERE contact_id LIKE 'C-%'
+)
+SELECT COALESCE(c.customer_id, crm.customer_id) AS customer_id,
+       CASE WHEN c.customer_id IS NULL THEN 0 ELSE 1 END AS in_shop,
+       CASE WHEN crm.customer_id IS NULL THEN 0 ELSE 1 END AS in_crm
+FROM customers c FULL OUTER JOIN crm ON crm.customer_id = c.customer_id;
+
+=== a01 | 04 Aggregation | Basic aggregates
+In one row return the number of products, the cheapest price, the highest price and the average price rounded to 2 decimals.
+--- solution
+SELECT COUNT(*), MIN(unit_price), MAX(unit_price), ROUND(AVG(unit_price), 2) FROM products;
+
+=== a02 | 04 Aggregation | GROUP BY
+Return `country` and the number of customers in it as `customers`, biggest country first.
+--- solution
+SELECT country, COUNT(*) AS customers FROM customers GROUP BY country ORDER BY customers DESC;
+--- options
+ordered
+
+=== a03 | 04 Aggregation | Revenue per order
+Return `order_id` and the order total `SUM(quantity * unit_price * (1 - discount))` rounded to 2 decimals as `order_total`, for every order.
+--- solution
+SELECT order_id, ROUND(SUM(quantity * unit_price * (1 - discount)), 2) AS order_total
+FROM order_items GROUP BY order_id;
+
+=== a04 | 04 Aggregation | HAVING
+Return `customer_id` and `order_count` for customers with at least 10 orders (any status).
+--- hint
+WHERE filters rows before grouping; HAVING filters groups after.
+--- solution
+SELECT customer_id, COUNT(*) AS order_count FROM orders GROUP BY customer_id HAVING COUNT(*) >= 10;
+
+=== a05 | 04 Aggregation | Revenue by category
+Net revenue is `quantity * unit_price * (1 - discount)` from order items, counting only orders with status `completed` or `shipped`. Return category `name` and `revenue` rounded to 2 decimals, highest first.
+--- solution
+SELECT c.name, ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS revenue
+FROM order_items oi
+JOIN orders o ON o.order_id = oi.order_id
+JOIN products p ON p.product_id = oi.product_id
+JOIN categories c ON c.category_id = p.category_id
+WHERE o.status IN ('completed', 'shipped')
+GROUP BY c.category_id, c.name
+ORDER BY revenue DESC;
+--- options
+ordered
+
+=== a06 | 04 Aggregation | Monthly revenue
+Return the month (`YYYY-MM`) and net revenue of completed or shipped orders for 2025, as `month, revenue` (2 decimals), in month order.
+--- hint
+`strftime('%Y-%m', order_date)` in SQLite. Elsewhere: `DATE_TRUNC('month', order_date)` (Postgres, Snowflake) or `FORMAT_DATE('%Y-%m', ...)` (BigQuery).
+--- solution
+SELECT strftime('%Y-%m', o.order_date) AS month,
+       ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS revenue
+FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+WHERE o.status IN ('completed', 'shipped') AND o.order_date >= '2025-01-01' AND o.order_date < '2026-01-01'
+GROUP BY month ORDER BY month;
+--- options
+ordered
+
+=== a07 | 04 Aggregation | COUNT DISTINCT
+For each `channel`, return the number of orders and the number of distinct customers who used it, as `channel, orders, customers`.
+--- solution
+SELECT channel, COUNT(*) AS orders, COUNT(DISTINCT customer_id) AS customers FROM orders GROUP BY channel;
+
+=== a08 | 04 Aggregation | Pivot with conditional aggregation
+Return one row per `country` with the number of customers in each segment as columns `consumer`, `small_business`, `enterprise`, ordered by country.
+--- solution
+SELECT country,
+  SUM(CASE WHEN segment = 'consumer' THEN 1 ELSE 0 END) AS consumer,
+  SUM(CASE WHEN segment = 'small_business' THEN 1 ELSE 0 END) AS small_business,
+  SUM(CASE WHEN segment = 'enterprise' THEN 1 ELSE 0 END) AS enterprise
+FROM customers GROUP BY country ORDER BY country;
+--- options
+ordered
+
+=== a09 | 04 Aggregation | Payments that don't add up
+Find orders whose total payments don't match the order total. Compare `ROUND(SUM(amount), 2)` per order with the item total. Consider only orders that have at least one payment. Return `order_id, order_total, paid` where the two differ by more than 0.01.
+--- hint
+Aggregate each table to the order grain first (two subqueries or CTEs), then join. Joining raw rows first causes fan-out.
+--- solution
+WITH t AS (SELECT order_id, ROUND(SUM(quantity * unit_price * (1 - discount)), 2) AS order_total FROM order_items GROUP BY order_id),
+     p AS (SELECT order_id, ROUND(SUM(amount), 2) AS paid FROM payments GROUP BY order_id)
+SELECT t.order_id, t.order_total, p.paid FROM t JOIN p ON p.order_id = t.order_id
+WHERE ABS(t.order_total - p.paid) > 0.01;
+
+=== a10 | 04 Aggregation | Average of averages trap
+Return two numbers: the average net line amount across all order lines, and the average of the per-order averages. Round both to 2 decimals. Notice they differ.
+--- solution
+SELECT ROUND(AVG(quantity * unit_price * (1 - discount)), 2),
+       (SELECT ROUND(AVG(a), 2) FROM (SELECT AVG(quantity * unit_price * (1 - discount)) AS a FROM order_items GROUP BY order_id))
+FROM order_items;
+
+=== a11 | 04 Aggregation | GROUP_CONCAT / STRING_AGG
+For each category id, return `category_id` and a comma-separated list of product names as `products` (any order inside the list is fine for you, but the checker needs it sorted alphabetically: aggregate from a sorted subquery).
+--- hint
+SQLite: `GROUP_CONCAT(name, ',')`. Postgres: `STRING_AGG(name, ',' ORDER BY name)`. Snowflake: `LISTAGG(name, ',') WITHIN GROUP (ORDER BY name)`.
+--- solution
+SELECT category_id, GROUP_CONCAT(name, ',') AS products
+FROM (SELECT category_id, name FROM products ORDER BY category_id, name)
+GROUP BY category_id;
+
+=== a12 | 04 Aggregation | Share of total
+Return each `channel` with its share of all orders as a percentage rounded to 1 decimal, as `channel, pct`.
+--- solution
+SELECT channel, ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM orders), 1) AS pct FROM orders GROUP BY channel;
+
+=== a13 | 04 Aggregation | Integer division
+Return the average quantity per order line computed two ways: `SUM(quantity) / COUNT(*)` and `SUM(quantity) * 1.0 / COUNT(*)` rounded to 3 decimals. The first one is wrong in SQLite, Postgres and SQL Server. Why?
+--- hint
+Integer divided by integer is integer division in these databases (Snowflake and BigQuery return decimals).
+--- solution
+SELECT SUM(quantity) / COUNT(*), ROUND(SUM(quantity) * 1.0 / COUNT(*), 3) FROM order_items;
+
+=== a14 | 04 Aggregation | ROLLUP-style subtotals
+Return `country`, `segment`, customer count for each country and segment, plus a subtotal row per country (segment NULL) and a grand total row (both NULL). Order by country then segment with NULLs last.
+--- hint
+SQLite has no ROLLUP, so UNION ALL three GROUP BYs. Postgres and Snowflake: `GROUP BY ROLLUP (country, segment)`.
+--- solution
+SELECT country, segment, n FROM (
+  SELECT country, segment, COUNT(*) AS n FROM customers GROUP BY country, segment
+  UNION ALL SELECT country, NULL, COUNT(*) FROM customers GROUP BY country
+  UNION ALL SELECT NULL, NULL, COUNT(*) FROM customers
+) ORDER BY country IS NULL, country, segment IS NULL, segment;
+--- options
+ordered
+
+=== s01 | 05 Subqueries and sets | Scalar subquery
+Return `name` and `unit_price` of products priced above the average product price.
+--- solution
+SELECT name, unit_price FROM products WHERE unit_price > (SELECT AVG(unit_price) FROM products);
+
+=== s02 | 05 Subqueries and sets | IN subquery
+Return `customer_id` and `email` of customers who have bought anything from category 16 (Books).
+--- solution
+SELECT customer_id, email FROM customers WHERE customer_id IN (
+  SELECT o.customer_id FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+  JOIN products p ON p.product_id = oi.product_id WHERE p.category_id = 16);
+
+=== s03 | 05 Subqueries and sets | Correlated subquery
+Return `product_id`, `name`, `unit_price` of products that are the most expensive in their category (ties all count).
+--- hint
+In the inner query, compare with the outer row: `WHERE p2.category_id = p.category_id`.
+--- solution
+SELECT product_id, name, unit_price FROM products p
+WHERE unit_price = (SELECT MAX(unit_price) FROM products p2 WHERE p2.category_id = p.category_id);
+
+=== s04 | 05 Subqueries and sets | EXISTS
+Return `customer_id` of customers who have at least one `returned` order AND at least one Shopwise Plus subscription.
+--- solution
+SELECT customer_id FROM customers c
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id AND o.status = 'returned')
+  AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.customer_id = c.customer_id);
+
+=== s05 | 05 Subqueries and sets | NOT IN with NULLs
+Return the `customer_id` of customers who never referred anyone. Use NOT EXISTS (NOT IN against a column containing NULLs returns nothing; try it to see).
+--- solution
+SELECT customer_id FROM customers c
+WHERE NOT EXISTS (SELECT 1 FROM customers r WHERE r.referred_by = c.customer_id);
+
+=== s06 | 05 Subqueries and sets | Derived table
+Using a subquery in FROM, return the average number of orders per customer among customers who ordered at least once, rounded to 2 decimals.
+--- solution
+SELECT ROUND(AVG(n), 2) FROM (SELECT customer_id, COUNT(*) AS n FROM orders GROUP BY customer_id);
+
+=== s07 | 05 Subqueries and sets | UNION vs UNION ALL
+Return a single column of every `customer_id` that either has a subscription or has a store order, with no duplicates.
+--- hint
+UNION removes duplicates; UNION ALL keeps them (and is faster).
+--- solution
+SELECT customer_id FROM subscriptions UNION SELECT customer_id FROM orders WHERE channel = 'store';
+
+=== s08 | 05 Subqueries and sets | INTERSECT and EXCEPT
+Return `customer_id` of customers who ordered through `web` but never through `app`.
+--- solution
+SELECT customer_id FROM orders WHERE channel = 'web'
+EXCEPT
+SELECT customer_id FROM orders WHERE channel = 'app';
+
+=== s09 | 05 Subqueries and sets | Above their own average
+Return `order_id`, `customer_id` and `order_total` (2 decimals) of orders whose total is more than double that customer's average order total.
+--- solution
+WITH t AS (SELECT o.order_id, o.customer_id, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS total
+           FROM orders o JOIN order_items oi ON oi.order_id = o.order_id GROUP BY o.order_id, o.customer_id)
+SELECT order_id, customer_id, ROUND(total, 2) AS order_total FROM t
+WHERE total > 2 * (SELECT AVG(total) FROM t t2 WHERE t2.customer_id = t.customer_id);
+
+=== s10 | 05 Subqueries and sets | Second highest salary
+Return the second highest distinct salary in `employees` as a single value.
+--- solution
+SELECT MAX(salary) FROM employees WHERE salary < (SELECT MAX(salary) FROM employees);
+
+=== c01 | 06 CTEs | Your first CTE
+Using `WITH order_totals AS (...)`, compute each order's total, then return the number of orders whose total exceeds 1000.
+--- hint
+`WITH name AS (SELECT ...) SELECT ... FROM name`
+--- solution
+WITH order_totals AS (
+  SELECT order_id, SUM(quantity * unit_price * (1 - discount)) AS total FROM order_items GROUP BY order_id
+)
+SELECT COUNT(*) FROM order_totals WHERE total > 1000;
+
+=== c02 | 06 CTEs | Chained CTEs
+Build it in steps: CTE 1 = order totals for completed/shipped orders with customer_id; CTE 2 = lifetime value per customer; final = the top 10 customers by lifetime value as `customer_id, first_name, ltv` (2 decimals), highest first.
+--- solution
+WITH order_totals AS (
+  SELECT o.order_id, o.customer_id, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS total
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+  WHERE o.status IN ('completed', 'shipped')
+  GROUP BY o.order_id, o.customer_id
+), ltv AS (
+  SELECT customer_id, SUM(total) AS ltv FROM order_totals GROUP BY customer_id
+)
+SELECT c.customer_id, c.first_name, ROUND(l.ltv, 2) AS ltv
+FROM ltv l JOIN customers c ON c.customer_id = l.customer_id
+ORDER BY l.ltv DESC LIMIT 10;
+--- options
+ordered
+
+=== c03 | 06 CTEs | Reuse a CTE twice
+With one CTE of monthly revenue (2025, completed/shipped), return the months whose revenue is above the average month, as `month, revenue` (2 decimals), in month order.
+--- hint
+A CTE can be referenced more than once: once in FROM and once in a subquery.
+--- solution
+WITH monthly AS (
+  SELECT strftime('%Y-%m', o.order_date) AS month, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS revenue
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+  WHERE o.status IN ('completed', 'shipped') AND o.order_date LIKE '2025-%'
+  GROUP BY month
+)
+SELECT month, ROUND(revenue, 2) FROM monthly WHERE revenue > (SELECT AVG(revenue) FROM monthly) ORDER BY month;
+--- options
+ordered
+
+=== c04 | 06 CTEs | CTE for readability: first orders
+Using a CTE that finds each customer's first order date, return how many customers placed their first order in each year, as `year, new_customers`, in year order.
+--- solution
+WITH firsts AS (SELECT customer_id, MIN(order_date) AS first_order FROM orders GROUP BY customer_id)
+SELECT strftime('%Y', first_order) AS year, COUNT(*) AS new_customers FROM firsts GROUP BY year ORDER BY year;
+--- options
+ordered
+
+=== c05 | 06 CTEs | Import / logic / final pattern
+dbt projects write models as import CTEs, then logic CTEs, then a final select. Write one: import `orders` and `payments`, compute paid amount per order, and return `status`, the number of orders and the total paid (2 decimals) per status, including statuses with no payments (paid shows 0).
+--- solution
+WITH orders_src AS (SELECT * FROM orders),
+payments_src AS (SELECT * FROM payments),
+paid AS (SELECT order_id, SUM(amount) AS paid FROM payments_src GROUP BY order_id),
+final AS (
+  SELECT o.status, COUNT(*) AS orders, ROUND(COALESCE(SUM(p.paid), 0), 2) AS paid
+  FROM orders_src o LEFT JOIN paid p ON p.order_id = o.order_id GROUP BY o.status
+)
+SELECT * FROM final;
+
+=== c06 | 06 CTEs | Replace a nested subquery
+This query nests three levels deep. Rewrite it with CTEs and return the same result:
+`SELECT country, AVG(n) FROM (SELECT c.country, c.customer_id, COUNT(o.order_id) n FROM customers c LEFT JOIN orders o ON o.customer_id=c.customer_id GROUP BY c.country, c.customer_id) GROUP BY country`
+Round the average to 2 decimals.
+--- solution
+WITH per_customer AS (
+  SELECT c.country, c.customer_id, COUNT(o.order_id) AS n
+  FROM customers c LEFT JOIN orders o ON o.customer_id = c.customer_id
+  GROUP BY c.country, c.customer_id
+)
+SELECT country, ROUND(AVG(n), 2) FROM per_customer GROUP BY country;
+
+=== c07 | 06 CTEs | CTE plus anti-join
+With a CTE of customers who subscribed to Shopwise Plus, return `customer_id` of customers who placed 5+ orders but never subscribed.
+--- solution
+WITH subscribers AS (SELECT DISTINCT customer_id FROM subscriptions),
+heavy AS (SELECT customer_id FROM orders GROUP BY customer_id HAVING COUNT(*) >= 5)
+SELECT h.customer_id FROM heavy h LEFT JOIN subscribers s ON s.customer_id = h.customer_id WHERE s.customer_id IS NULL;
+
+=== c08 | 06 CTEs | Data quality check in CTEs
+In one row, using a CTE per check, return: number of orders with no items (`orders_without_items`), number of order items pointing at a missing product (`orphan_items`), and number of non-cancelled orders with no payment (`unpaid_orders`).
+--- solution
+WITH no_items AS (SELECT COUNT(*) AS n FROM orders o WHERE NOT EXISTS (SELECT 1 FROM order_items i WHERE i.order_id = o.order_id)),
+orphans AS (SELECT COUNT(*) AS n FROM order_items i WHERE NOT EXISTS (SELECT 1 FROM products p WHERE p.product_id = i.product_id)),
+unpaid AS (SELECT COUNT(*) AS n FROM orders o WHERE o.status <> 'cancelled' AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.order_id = o.order_id))
+SELECT no_items.n AS orders_without_items, orphans.n AS orphan_items, unpaid.n AS unpaid_orders FROM no_items, orphans, unpaid;
+
+=== c09 | 06 CTEs | Customer 360 model
+Build a customer summary with CTEs: one row per customer with `customer_id`, `orders` (all statuses), `first_order`, `last_order`, `is_subscriber` (1/0, ever subscribed) and `net_revenue` (completed/shipped only, 2 decimals, 0 if none). Include customers with no orders.
+--- solution
+WITH order_totals AS (
+  SELECT o.order_id, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS total
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id GROUP BY o.order_id
+), cust_orders AS (
+  SELECT o.customer_id, COUNT(*) AS orders, MIN(o.order_date) AS first_order, MAX(o.order_date) AS last_order,
+         SUM(CASE WHEN o.status IN ('completed','shipped') THEN t.total ELSE 0 END) AS net_revenue
+  FROM orders o JOIN order_totals t ON t.order_id = o.order_id GROUP BY o.customer_id
+), subs AS (SELECT DISTINCT customer_id FROM subscriptions)
+SELECT c.customer_id, COALESCE(co.orders, 0) AS orders, co.first_order, co.last_order,
+       CASE WHEN s.customer_id IS NULL THEN 0 ELSE 1 END AS is_subscriber,
+       ROUND(COALESCE(co.net_revenue, 0), 2) AS net_revenue
+FROM customers c LEFT JOIN cust_orders co ON co.customer_id = c.customer_id
+LEFT JOIN subs s ON s.customer_id = c.customer_id;
+
+=== c10 | 06 CTEs | CTE with VALUES
+Use a CTE built from `VALUES` as a small lookup table mapping country codes to regions: US and CA are `Americas`, UK and DE are `EMEA`, IN and AU are `APAC`. Return `region` and the number of customers, ordered by region.
+--- hint
+`WITH regions(country, region) AS (VALUES ('US','Americas'), ('CA','Americas'), ...)`
+--- solution
+WITH regions(country, region) AS (VALUES ('US','Americas'),('CA','Americas'),('UK','EMEA'),('DE','EMEA'),('IN','APAC'),('AU','APAC'))
+SELECT r.region, COUNT(*) FROM customers c JOIN regions r ON r.country = c.country GROUP BY r.region ORDER BY r.region;
+--- options
+ordered
+
+=== c11 | 06 CTEs | Writable step: CTE feeding an INSERT
+Create a table `vip_customers(customer_id INTEGER, ltv REAL)` and fill it with a `WITH ... INSERT` (or `INSERT ... WITH`) statement for customers whose completed/shipped net revenue is above 5000. The checker reads `SELECT customer_id, ROUND(ltv, 2) FROM vip_customers`.
+--- hint
+SQLite allows `WITH x AS (...) INSERT INTO t SELECT ... FROM x;` and also `INSERT INTO t WITH x AS (...) SELECT ...`.
+--- solution
+CREATE TABLE vip_customers(customer_id INTEGER, ltv REAL);
+WITH t AS (
+  SELECT o.customer_id, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS ltv
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+  WHERE o.status IN ('completed', 'shipped') GROUP BY o.customer_id
+)
+INSERT INTO vip_customers SELECT customer_id, ltv FROM t WHERE ltv > 5000;
+--- check
+SELECT customer_id, ROUND(ltv, 2) FROM vip_customers;
+
+=== c12 | 06 CTEs | Materialization hint
+SQLite (like Postgres 12+) lets you say whether a CTE should be computed once: `WITH x AS MATERIALIZED (...)` or `AS NOT MATERIALIZED`. Write a query that uses `AS MATERIALIZED` for a CTE of order totals and returns the max order total rounded to 2 decimals. Then try EXPLAIN on it.
+--- solution
+WITH t AS MATERIALIZED (SELECT order_id, SUM(quantity * unit_price * (1 - discount)) AS total FROM order_items GROUP BY order_id)
+SELECT ROUND(MAX(total), 2) FROM t;
+
+=== r01 | 07 Recursive CTEs | Count to ten
+Use a recursive CTE to return the numbers 1 to 10 in a column `n`.
+--- hint
+`WITH RECURSIVE nums(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM nums WHERE n < 10) SELECT n FROM nums;` The WHERE in the recursive part is what stops it.
+--- solution
+WITH RECURSIVE nums(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM nums WHERE n < 10)
+SELECT n FROM nums;
+--- options
+ordered
+
+=== r02 | 07 Recursive CTEs | Build a date spine
+Generate every date in December 2025 (31 rows) as `day`, in order.
+--- hint
+Anchor `SELECT '2025-12-01'`, recursive step `SELECT date(day, '+1 day') FROM spine WHERE day < '2025-12-31'`. Postgres has `generate_series`, and dbt has the `dbt_utils.date_spine` macro.
+--- solution
+WITH RECURSIVE spine(day) AS (
+  SELECT '2025-12-01' UNION ALL SELECT date(day, '+1 day') FROM spine WHERE day < '2025-12-31'
+)
+SELECT day FROM spine;
+--- options
+ordered
+
+=== r03 | 07 Recursive CTEs | Fill gaps with a spine
+Return every day of December 2025 with the number of orders placed that day, as `day, orders`, showing 0 for days with no orders, in date order.
+--- solution
+WITH RECURSIVE spine(day) AS (
+  SELECT '2025-12-01' UNION ALL SELECT date(day, '+1 day') FROM spine WHERE day < '2025-12-31'
+)
+SELECT s.day, COUNT(o.order_id) AS orders FROM spine s LEFT JOIN orders o ON o.order_date = s.day
+GROUP BY s.day ORDER BY s.day;
+--- options
+ordered
+
+=== r04 | 07 Recursive CTEs | Walk down the org chart
+Return every employee under Marcus Webb (employee 2) at any depth, not including Marcus himself, as `employee_id, full_name, depth` where his direct reports have depth 1.
+--- hint
+Anchor: the direct reports of 2 at depth 1. Recursive part: join employees to the CTE on `e.manager_id = cte.employee_id` with depth + 1.
+--- solution
+WITH RECURSIVE team(employee_id, full_name, depth) AS (
+  SELECT employee_id, full_name, 1 FROM employees WHERE manager_id = 2
+  UNION ALL
+  SELECT e.employee_id, e.full_name, t.depth + 1 FROM employees e JOIN team t ON e.manager_id = t.employee_id
+)
+SELECT employee_id, full_name, depth FROM team;
+
+=== r05 | 07 Recursive CTEs | Walk up the chain
+Return the management chain above Chloe Dubois (employee 25), from her direct manager up to the CEO, as `level, full_name, title` where level 1 is her manager. Order by level.
+--- solution
+WITH RECURSIVE chain(employee_id, manager_id, level) AS (
+  SELECT employee_id, manager_id, 0 FROM employees WHERE employee_id = 25
+  UNION ALL
+  SELECT e.employee_id, e.manager_id, c.level + 1 FROM employees e JOIN chain c ON e.employee_id = c.manager_id
+)
+SELECT c.level, e.full_name, e.title FROM chain c JOIN employees e ON e.employee_id = c.employee_id
+WHERE c.level > 0 ORDER BY c.level;
+--- options
+ordered
+
+=== r06 | 07 Recursive CTEs | Path strings
+Return every employee with their full reporting path from the CEO as text, like `Helen Carter > Ingrid Larsen > Mei Lin`, as `employee_id, path`, ordered by path.
+--- hint
+Carry a text column through the recursion: `path || ' > ' || e.full_name`.
+--- solution
+WITH RECURSIVE tree(employee_id, path) AS (
+  SELECT employee_id, full_name FROM employees WHERE manager_id IS NULL
+  UNION ALL
+  SELECT e.employee_id, t.path || ' > ' || e.full_name FROM employees e JOIN tree t ON e.manager_id = t.employee_id
+)
+SELECT employee_id, path FROM tree ORDER BY path;
+--- options
+ordered
+
+=== r07 | 07 Recursive CTEs | Roll a hierarchy up
+For each top-level category (no parent), return its `name` and the net revenue of all products in it or any subcategory at any depth, from completed/shipped orders, as `name, revenue` (2 decimals), highest first.
+--- hint
+First build a CTE that maps every category to its root: anchor = roots mapped to themselves, recursive = children inherit the parent's root.
+--- solution
+WITH RECURSIVE roots(category_id, root_id) AS (
+  SELECT category_id, category_id FROM categories WHERE parent_id IS NULL
+  UNION ALL
+  SELECT c.category_id, r.root_id FROM categories c JOIN roots r ON c.parent_id = r.category_id
+)
+SELECT top.name, ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS revenue
+FROM order_items oi
+JOIN orders o ON o.order_id = oi.order_id AND o.status IN ('completed', 'shipped')
+JOIN products p ON p.product_id = oi.product_id
+JOIN roots r ON r.category_id = p.category_id
+JOIN categories top ON top.category_id = r.root_id
+GROUP BY top.category_id, top.name ORDER BY revenue DESC;
+--- options
+ordered
+
+=== r08 | 07 Recursive CTEs | Headcount and cost under each manager
+For every employee who manages someone, return `full_name`, the total number of people below them at any depth as `headcount`, and the total salary of those people as `team_salary`. Order by headcount descending, then name.
+--- hint
+Build all (manager, report) pairs at any depth: anchor = direct pairs, recursive = extend a pair one level down. Then group by manager.
+--- solution
+WITH RECURSIVE pairs(manager_id, employee_id) AS (
+  SELECT manager_id, employee_id FROM employees WHERE manager_id IS NOT NULL
+  UNION ALL
+  SELECT p.manager_id, e.employee_id FROM pairs p JOIN employees e ON e.manager_id = p.employee_id
+)
+SELECT m.full_name, COUNT(*) AS headcount, SUM(e.salary) AS team_salary
+FROM pairs p JOIN employees m ON m.employee_id = p.manager_id JOIN employees e ON e.employee_id = p.employee_id
+GROUP BY m.employee_id, m.full_name ORDER BY headcount DESC, m.full_name;
+--- options
+ordered
+
+=== r09 | 07 Recursive CTEs | Referral chains
+Customers can be referred by an earlier customer, who may have been referred too. For customer 300, return the full chain of referrers back to the original one, as `step, customer_id` where step 1 is the person who referred 300. If 300 wasn't referred, the result is empty, so also try other ids. Order by step.
+--- solution
+WITH RECURSIVE chain(step, customer_id) AS (
+  SELECT 1, referred_by FROM customers WHERE customer_id = 300 AND referred_by IS NOT NULL
+  UNION ALL
+  SELECT c.step + 1, cu.referred_by FROM chain c JOIN customers cu ON cu.customer_id = c.customer_id
+  WHERE cu.referred_by IS NOT NULL
+)
+SELECT step, customer_id FROM chain ORDER BY step;
+--- options
+ordered
+
+=== r10 | 07 Recursive CTEs | Longest referral chain
+Across all customers, find the longest referral chain. Return the `customer_id` at the bottom of the longest chain(s) and the chain `length` (number of referrers above them). Return all ties.
+--- solution
+WITH RECURSIVE chain(start_id, current_id, length) AS (
+  SELECT customer_id, referred_by, 1 FROM customers WHERE referred_by IS NOT NULL
+  UNION ALL
+  SELECT ch.start_id, c.referred_by, ch.length + 1 FROM chain ch JOIN customers c ON c.customer_id = ch.current_id
+  WHERE c.referred_by IS NOT NULL
+), longest AS (SELECT start_id, MAX(length) AS length FROM chain GROUP BY start_id)
+SELECT start_id, length FROM longest WHERE length = (SELECT MAX(length) FROM longest);
+
+=== r11 | 07 Recursive CTEs | Cycle guard
+Recursive CTEs loop forever on cyclic data. The setup adds a cycle: employee 1 now reports to 25. Walk down from employee 1 and return the distinct `employee_id`s reached, stopping when an id is already on the path. (Without a guard this times out.)
+--- setup
+UPDATE employees SET manager_id = 25 WHERE employee_id = 1
+--- hint
+Carry the visited path as text like `,1,5,19,` and add `WHERE instr(t.path, ',' || e.employee_id || ',') = 0`. Postgres 14+ has a `CYCLE` clause for this. Using UNION instead of UNION ALL also stops exact duplicate rows.
+--- solution
+WITH RECURSIVE walk(employee_id, path) AS (
+  SELECT 1, ',1,'
+  UNION ALL
+  SELECT e.employee_id, w.path || e.employee_id || ','
+  FROM employees e JOIN walk w ON e.manager_id = w.employee_id
+  WHERE instr(w.path, ',' || e.employee_id || ',') = 0
+)
+SELECT DISTINCT employee_id FROM walk;
+
+=== r12 | 07 Recursive CTEs | Split a string into rows
+Split the text `'dbt,airflow,sql,python,git'` into one row per item as `item`, in the original order.
+--- hint
+Carry the remaining text: each step takes the part before the first comma with `substr` and `instr`, and keeps the rest.
+--- solution
+WITH RECURSIVE parts(item, rest) AS (
+  SELECT NULL, 'dbt,airflow,sql,python,git' || ','
+  UNION ALL
+  SELECT substr(rest, 1, instr(rest, ',') - 1), substr(rest, instr(rest, ',') + 1) FROM parts WHERE rest <> ''
+)
+SELECT item FROM parts WHERE item IS NOT NULL;
+--- options
+ordered
+
+=== r13 | 07 Recursive CTEs | Running balance by recursion
+Recursion can also walk a sequence row by row. For customer 1's orders sorted by date, number them with ROW_NUMBER in a CTE, then use a recursive CTE to compute a running count, returning `rn, order_date, running_orders`. (A window function is simpler; this is practice.)
+--- solution
+WITH RECURSIVE o AS (
+  SELECT ROW_NUMBER() OVER (ORDER BY order_date, order_id) AS rn, order_date FROM orders WHERE customer_id = 1
+), r(rn, order_date, running_orders) AS (
+  SELECT rn, order_date, 1 FROM o WHERE rn = 1
+  UNION ALL
+  SELECT o.rn, o.order_date, r.running_orders + 1 FROM o JOIN r ON o.rn = r.rn + 1
+)
+SELECT rn, order_date, running_orders FROM r ORDER BY rn;
+--- options
+ordered
+
+=== w01 | 08 Window functions | ROW_NUMBER
+Return `order_id`, `customer_id`, `order_date` and `order_seq`, the order's position in that customer's history (1 = first order; break ties on order_id).
+--- hint
+`ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id)`
+--- solution
+SELECT order_id, customer_id, order_date,
+       ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS order_seq
+FROM orders;
+
+=== w02 | 08 Window functions | Top-N per group
+Return the 2 most expensive products per category as `category_id, name, unit_price`. If prices tie, break ties by name A to Z.
+--- solution
+SELECT category_id, name, unit_price FROM (
+  SELECT category_id, name, unit_price,
+         ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY unit_price DESC, name) AS rn
+  FROM products
+) WHERE rn <= 2;
+
+=== w03 | 08 Window functions | RANK vs DENSE_RANK vs ROW_NUMBER
+For employees, return `full_name`, `salary`, and three columns ranking salary highest first across the whole company: `rn` (ROW_NUMBER, ties by name), `rnk` (RANK), `drnk` (DENSE_RANK).
+--- solution
+SELECT full_name, salary,
+  ROW_NUMBER() OVER (ORDER BY salary DESC, full_name) AS rn,
+  RANK() OVER (ORDER BY salary DESC) AS rnk,
+  DENSE_RANK() OVER (ORDER BY salary DESC) AS drnk
+FROM employees;
+
+=== w04 | 08 Window functions | Running total
+For 2025, return `month`, monthly revenue and the running total of revenue for the year, as `month, revenue, running_revenue` (2 decimals), completed/shipped orders only, in month order.
+--- hint
+Aggregate per month first, then `SUM(revenue) OVER (ORDER BY month)`.
+--- solution
+WITH m AS (
+  SELECT strftime('%Y-%m', o.order_date) AS month, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS revenue
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+  WHERE o.status IN ('completed','shipped') AND o.order_date LIKE '2025-%' GROUP BY month
+)
+SELECT month, ROUND(revenue, 2), ROUND(SUM(revenue) OVER (ORDER BY month), 2) FROM m ORDER BY month;
+--- options
+ordered
+
+=== w05 | 08 Window functions | Month over month with LAG
+Using the 2025 monthly revenue, return `month`, `revenue`, `prev_revenue` and `pct_change` (percent change from previous month, 1 decimal, NULL for January). All money values 2 decimals. In month order.
+--- solution
+WITH m AS (
+  SELECT strftime('%Y-%m', o.order_date) AS month, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS revenue
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+  WHERE o.status IN ('completed','shipped') AND o.order_date LIKE '2025-%' GROUP BY month
+)
+SELECT month, ROUND(revenue, 2), ROUND(LAG(revenue) OVER (ORDER BY month), 2),
+       ROUND(100 * (revenue - LAG(revenue) OVER (ORDER BY month)) / LAG(revenue) OVER (ORDER BY month), 1)
+FROM m ORDER BY month;
+--- options
+ordered
+
+=== w06 | 08 Window functions | Days between orders
+For every order, return `customer_id`, `order_id`, `order_date` and `days_since_prev`, the days since that customer's previous order (NULL for their first). Break same-day ties by order_id.
+--- hint
+`julianday(order_date) - julianday(LAG(order_date) OVER (...))` in SQLite. Postgres: subtract dates directly; Snowflake: `DATEDIFF('day', prev, cur)`.
+--- solution
+SELECT customer_id, order_id, order_date,
+  CAST(julianday(order_date) - julianday(LAG(order_date) OVER (PARTITION BY customer_id ORDER BY order_date, order_id)) AS INTEGER) AS days_since_prev
+FROM orders;
+
+=== w07 | 08 Window functions | Moving average
+For December 2025, return each `day` (from a date spine), its order count and a 7-day trailing average of the count (that day and the 6 before, 2 decimals), as `day, orders, avg_7d`. Use a frame clause. Start the spine at 2025-11-25 so the first days have a full window, but only output December.
+--- hint
+`AVG(orders) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)`. Filter to December in an outer query, after the window has been computed.
+--- solution
+WITH RECURSIVE spine(day) AS (SELECT '2025-11-25' UNION ALL SELECT date(day, '+1 day') FROM spine WHERE day < '2025-12-31'),
+daily AS (SELECT s.day, COUNT(o.order_id) AS orders FROM spine s LEFT JOIN orders o ON o.order_date = s.day GROUP BY s.day),
+w AS (SELECT day, orders, AVG(orders) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS avg_7d FROM daily)
+SELECT day, orders, ROUND(avg_7d, 2) FROM w WHERE day >= '2025-12-01' ORDER BY day;
+--- options
+ordered
+
+=== w08 | 08 Window functions | Percent of group total
+For each product, return `category_id`, `name`, units sold (all statuses) and its share of its category's units as `pct_of_category` (1 decimal). Include only products that sold.
+--- solution
+WITH u AS (SELECT p.category_id, p.name, SUM(oi.quantity) AS units FROM products p JOIN order_items oi ON oi.product_id = p.product_id GROUP BY p.product_id)
+SELECT category_id, name, units, ROUND(100.0 * units / SUM(units) OVER (PARTITION BY category_id), 1) FROM u;
+
+=== w09 | 08 Window functions | FIRST_VALUE and LAST_VALUE
+For each customer who ordered, return `customer_id`, the channel of their first order `first_channel` and the channel of their latest order `last_channel` (ties by order_id). One row per customer.
+--- hint
+LAST_VALUE needs `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING`, because the default frame stops at the current row.
+--- solution
+SELECT DISTINCT customer_id,
+  FIRST_VALUE(channel) OVER (PARTITION BY customer_id ORDER BY order_date, order_id) AS first_channel,
+  LAST_VALUE(channel) OVER (PARTITION BY customer_id ORDER BY order_date, order_id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_channel
+FROM orders;
+
+=== w10 | 08 Window functions | NTILE quartiles
+Split customers who have orders into 4 quartiles by number of orders (most orders = quartile 1, ties broken by customer_id). Return `quartile`, number of customers and min and max order count in each, ordered by quartile.
+--- solution
+WITH n AS (SELECT customer_id, COUNT(*) AS orders FROM orders GROUP BY customer_id),
+q AS (SELECT customer_id, orders, NTILE(4) OVER (ORDER BY orders DESC, customer_id) AS quartile FROM n)
+SELECT quartile, COUNT(*), MIN(orders), MAX(orders) FROM q GROUP BY quartile ORDER BY quartile;
+--- options
+ordered
+
+=== w11 | 08 Window functions | Latest row per key (dedupe)
+`segment_changes` holds every change. Return each customer's current segment (latest `changed_at`) as `customer_id, segment`.
+--- hint
+`ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY changed_at DESC) = 1`. Snowflake and BigQuery can filter it directly with `QUALIFY`.
+--- solution
+SELECT customer_id, segment FROM (
+  SELECT customer_id, segment, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY changed_at DESC) AS rn FROM segment_changes
+) WHERE rn = 1;
+
+=== w12 | 08 Window functions | ROWS vs RANGE
+For customer 1's orders, return `order_date`, `order_id`, a running count with `ROWS` frame (`rows_count`) and with `RANGE` frame (`range_count`), both ordered by order_date only. Order output by order_date, order_id. Notice the difference on days with two orders.
+--- hint
+RANGE treats rows with the same ORDER BY value as peers and includes them all; ROWS counts physical rows.
+--- setup
+INSERT INTO orders VALUES (99001, 1, (SELECT MIN(order_date) FROM orders WHERE customer_id = 1), 'completed', 'web', NULL)
+--- solution
+SELECT order_date, order_id,
+  COUNT(*) OVER (ORDER BY order_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rows_count,
+  COUNT(*) OVER (ORDER BY order_date RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS range_count
+FROM orders WHERE customer_id = 1 ORDER BY order_date, order_id;
+--- options
+ordered
+
+=== w13 | 08 Window functions | Compare to the group average
+Return `full_name`, `department`, `salary` and how much each employee earns above or below their department's average, as `diff_from_dept_avg` (rounded to 0 decimals).
+--- solution
+SELECT full_name, department, salary, ROUND(salary - AVG(salary) OVER (PARTITION BY department), 0) FROM employees;
+
+=== w14 | 08 Window functions | Cumulative distribution
+For products, return `name`, `unit_price`, `PERCENT_RANK()` and `CUME_DIST()` by price ascending, both rounded to 3 decimals.
+--- solution
+SELECT name, unit_price, ROUND(PERCENT_RANK() OVER (ORDER BY unit_price), 3), ROUND(CUME_DIST() OVER (ORDER BY unit_price), 3) FROM products;
+
+=== w15 | 08 Window functions | LEAD for validity ranges
+Turn `segment_changes` into validity ranges: return `customer_id`, `segment`, `valid_from` (changed_at) and `valid_to` (the next change date for that customer, NULL if current).
+--- hint
+`LEAD(changed_at) OVER (PARTITION BY customer_id ORDER BY changed_at)`. This is exactly what a dbt snapshot (SCD type 2) produces.
+--- solution
+SELECT customer_id, segment, changed_at AS valid_from,
+       LEAD(changed_at) OVER (PARTITION BY customer_id ORDER BY changed_at) AS valid_to
+FROM segment_changes;
+
+=== w16 | 08 Window functions | Named windows
+Return `order_id`, `customer_id`, `order_date`, the customer's order sequence number and their total order count, using a single `WINDOW w AS (PARTITION BY customer_id ...)` clause for the sequence.
+--- hint
+`... ROW_NUMBER() OVER w ... FROM orders WINDOW w AS (PARTITION BY customer_id ORDER BY order_date, order_id)`. For the count you need a partition without ORDER BY (or a frame over everything).
+--- solution
+SELECT order_id, customer_id, order_date, ROW_NUMBER() OVER w, COUNT(*) OVER (PARTITION BY customer_id)
+FROM orders WINDOW w AS (PARTITION BY customer_id ORDER BY order_date, order_id);
+
+=== w17 | 08 Window functions | Median
+Return the median order total (all orders, 2 decimals). SQLite has no MEDIAN, so use ROW_NUMBER and COUNT windows.
+--- hint
+Number the totals, and average the middle one or two: rows where `rn IN ((cnt + 1) / 2, (cnt + 2) / 2)`. Postgres: `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total)`; Snowflake also has `MEDIAN()`.
+--- solution
+WITH t AS (SELECT order_id, SUM(quantity * unit_price * (1 - discount)) AS total FROM order_items GROUP BY order_id),
+r AS (SELECT total, ROW_NUMBER() OVER (ORDER BY total) AS rn, COUNT(*) OVER () AS cnt FROM t)
+SELECT ROUND(AVG(total), 2) FROM r WHERE rn IN ((cnt + 1) / 2, (cnt + 2) / 2);
+
+=== d01 | 09 Dates, strings and cleaning | Extract parts of a date
+Return the number of orders per weekday as `weekday, orders`, where weekday is 0 (Sunday) to 6 (Saturday), in weekday order.
+--- hint
+`strftime('%w', order_date)`. Postgres: `EXTRACT(DOW FROM ...)`; Snowflake: `DAYOFWEEK(...)`.
+--- solution
+SELECT CAST(strftime('%w', order_date) AS INTEGER) AS weekday, COUNT(*) FROM orders GROUP BY weekday ORDER BY weekday;
+--- options
+ordered
+
+=== d02 | 09 Dates, strings and cleaning | Date arithmetic
+Return `order_id`, `order_date` and the date 30 days later as `due_date` for orders placed on 2025-12-01.
+--- hint
+SQLite: `date(order_date, '+30 days')`. Postgres: `order_date + INTERVAL '30 days'`. Snowflake: `DATEADD(day, 30, order_date)`.
+--- solution
+SELECT order_id, order_date, date(order_date, '+30 days') FROM orders WHERE order_date = '2025-12-01';
+
+=== d03 | 09 Dates, strings and cleaning | Truncate to week
+Count orders per week starting Monday for December 2025, as `week_start, orders`, in order. (Use order_date between 2025-12-01 and 2025-12-28.)
+--- hint
+In SQLite, `date(d, 'weekday 0', '-6 days')` gives the Monday of d's week (move to the next Sunday, then back six days). Elsewhere: `DATE_TRUNC('week', d)`.
+--- solution
+SELECT date(order_date, 'weekday 0', '-6 days') AS week_start, COUNT(*) FROM orders
+WHERE order_date BETWEEN '2025-12-01' AND '2025-12-28' GROUP BY week_start ORDER BY week_start;
+--- options
+ordered
+
+=== d04 | 09 Dates, strings and cleaning | Tenure in days
+Return `customer_id` and the number of days from `signup_date` to their first order as `days_to_first_order`, for customers who ordered.
+--- solution
+SELECT c.customer_id, CAST(julianday(MIN(o.order_date)) - julianday(c.signup_date) AS INTEGER)
+FROM customers c JOIN orders o ON o.customer_id = c.customer_id GROUP BY c.customer_id;
+
+=== d05 | 09 Dates, strings and cleaning | Clean text
+From `raw_crm_contacts`, return `contact_id`, the name trimmed and in lower case as `name_clean`, the email trimmed and lower case as `email_clean` (empty strings become NULL), and the country code trimmed and upper case as `country`. Skip rows where `contact_id` is NULL or empty.
+--- hint
+`LOWER(TRIM(x))`, `UPPER(TRIM(x))`, `NULLIF(LOWER(TRIM(email)), '')`.
+--- solution
+SELECT contact_id, LOWER(TRIM(full_name)), NULLIF(LOWER(TRIM(email)), ''), UPPER(TRIM(country_code))
+FROM raw_crm_contacts WHERE contact_id IS NOT NULL AND contact_id <> '';
+
+=== d06 | 09 Dates, strings and cleaning | Split a name
+From `customers`, return `customer_id` and the domain of the email (the part after `@`) as `domain`, for customers with an email. Then think about how you'd count domains.
+--- hint
+`SUBSTR(email, INSTR(email, '@') + 1)`. Postgres: `SPLIT_PART(email, '@', 2)`.
+--- solution
+SELECT customer_id, SUBSTR(email, INSTR(email, '@') + 1) FROM customers WHERE email IS NOT NULL;
+
+=== d07 | 09 Dates, strings and cleaning | Normalize phone numbers
+From `raw_crm_contacts`, return `contact_id` and the phone with every non-digit removed as `phone_digits`, only for rows with a phone. SQLite has no regex replace, so chain `REPLACE` calls for `+`, `-`, `(`, `)` and spaces.
+--- hint
+Postgres: `REGEXP_REPLACE(phone, '[^0-9]', '', 'g')`. Snowflake: `REGEXP_REPLACE(phone, '[^0-9]', '')`.
+--- solution
+SELECT contact_id, REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '+', ''), '-', ''), '(', ''), ')', ''), ' ', '')
+FROM raw_crm_contacts WHERE phone IS NOT NULL;
+
+=== d08 | 09 Dates, strings and cleaning | Cast and type coercion
+Return the `contact_id` as an integer customer id (`C-00042` gives 42) and `updated_at` as a date only (`YYYY-MM-DD`), for valid ids (starting with `C-`).
+--- solution
+SELECT CAST(SUBSTR(contact_id, 3) AS INTEGER), date(updated_at) FROM raw_crm_contacts WHERE contact_id LIKE 'C-%';
+
+=== d09 | 09 Dates, strings and cleaning | Deduplicate the CRM extract
+Return one row per `contact_id` (non-empty ids only), keeping the row with the latest `updated_at` (if equal, the latest `_loaded_at`), as `contact_id, email, updated_at` with the email cleaned (trim, lower, empty = NULL).
+--- solution
+SELECT contact_id, NULLIF(LOWER(TRIM(email)), ''), updated_at FROM (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY contact_id ORDER BY updated_at DESC, _loaded_at DESC) AS rn
+  FROM raw_crm_contacts WHERE contact_id IS NOT NULL AND contact_id <> ''
+) WHERE rn = 1;
+
+=== d10 | 09 Dates, strings and cleaning | Hour of day
+From `events`, return the hour of day (0 to 23) and the number of purchase events in that hour, as `hour, purchases`, in hour order, only hours with purchases.
+--- solution
+SELECT CAST(strftime('%H', event_time) AS INTEGER) AS hour, COUNT(*) FROM events WHERE event_type = 'purchase' GROUP BY hour ORDER BY hour;
+--- options
+ordered
+
+=== m01 | 10 Changing data | INSERT
+Add a new category `Smart Home` with id 17 under parent 9 (Home). The checker reads `SELECT * FROM categories WHERE category_id >= 16`.
+--- solution
+INSERT INTO categories (category_id, name, parent_id) VALUES (17, 'Smart Home', 9);
+--- check
+SELECT * FROM categories WHERE category_id >= 16;
+
+=== m02 | 10 Changing data | UPDATE with a condition
+Raise the price of every product in category 16 (Books) by 10%, rounded to 2 decimals. The checker reads `SELECT product_id, unit_price FROM products WHERE category_id = 16`.
+--- solution
+UPDATE products SET unit_price = ROUND(unit_price * 1.10, 2) WHERE category_id = 16;
+--- check
+SELECT product_id, unit_price FROM products WHERE category_id = 16;
+
+=== m03 | 10 Changing data | UPDATE from another table
+Mark as discontinued (`discontinued = 1`) every product that had no orders placed in 2025. The checker counts discontinued products.
+--- hint
+`UPDATE products SET discontinued = 1 WHERE product_id NOT IN (SELECT ... )`. The subquery's column has no NULLs here, so NOT IN is safe; NOT EXISTS is the habit to build.
+--- solution
+UPDATE products SET discontinued = 1 WHERE NOT EXISTS (
+  SELECT 1 FROM order_items oi JOIN orders o ON o.order_id = oi.order_id
+  WHERE oi.product_id = products.product_id AND o.order_date >= '2025-01-01');
+--- check
+SELECT COUNT(*) FROM products WHERE discontinued = 1;
+
+=== m04 | 10 Changing data | DELETE
+Delete all `cancelled` orders and their order items (items first, because of the foreign key). The checker returns the counts of orders and order items left.
+--- solution
+DELETE FROM order_items WHERE order_id IN (SELECT order_id FROM orders WHERE status = 'cancelled');
+DELETE FROM orders WHERE status = 'cancelled';
+--- check
+SELECT (SELECT COUNT(*) FROM orders), (SELECT COUNT(*) FROM order_items);
+
+=== m05 | 10 Changing data | CREATE TABLE with constraints
+Create a table `product_reviews` with: `review_id` integer primary key, `product_id` integer not null referencing products, `rating` integer not null that must be between 1 and 5 (CHECK), `review_text` text, `created_at` text not null default `CURRENT_TIMESTAMP`. Then insert one review with rating 5 for product 1. The checker reads the column list and the row count.
+--- solution
+CREATE TABLE product_reviews(
+  review_id INTEGER PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(product_id),
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  review_text TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO product_reviews (product_id, rating) VALUES (1, 5);
+--- check
+SELECT (SELECT GROUP_CONCAT(name || ':' || "notnull" || ':' || pk, ',') FROM pragma_table_info('product_reviews')), (SELECT COUNT(*) FROM product_reviews);
+
+=== m06 | 10 Changing data | UPSERT
+A table `stock(product_id INTEGER PRIMARY KEY, qty INTEGER)` exists with product 1 at qty 10. Write ONE statement that adds 5 units of product 1 and 3 units of product 2, inserting new products and adding to existing ones. The checker reads `SELECT * FROM stock ORDER BY product_id`.
+--- setup
+CREATE TABLE stock(product_id INTEGER PRIMARY KEY, qty INTEGER); INSERT INTO stock VALUES (1, 10)
+--- hint
+`INSERT ... ON CONFLICT (product_id) DO UPDATE SET qty = qty + excluded.qty`. Snowflake, SQL Server and BigQuery use `MERGE` for this.
+--- solution
+INSERT INTO stock (product_id, qty) VALUES (1, 5), (2, 3)
+ON CONFLICT (product_id) DO UPDATE SET qty = qty + excluded.qty;
+--- check
+SELECT * FROM stock ORDER BY product_id;
+--- options
+ordered
+
+=== m07 | 10 Changing data | Transactions
+Inside `BEGIN; ... COMMIT;`, move 100 from customer 1's gift balance to customer 2's. The setup creates `balances(customer_id, amount)` with 500 and 50. Then start a second transaction that sets customer 1 to 0 and ROLL it BACK. The checker reads the balances.
+--- setup
+CREATE TABLE balances(customer_id INTEGER PRIMARY KEY, amount REAL); INSERT INTO balances VALUES (1, 500), (2, 50)
+--- solution
+BEGIN;
+UPDATE balances SET amount = amount - 100 WHERE customer_id = 1;
+UPDATE balances SET amount = amount + 100 WHERE customer_id = 2;
+COMMIT;
+BEGIN;
+UPDATE balances SET amount = 0 WHERE customer_id = 1;
+ROLLBACK;
+--- check
+SELECT * FROM balances ORDER BY customer_id;
+--- options
+ordered
+
+=== m08 | 10 Changing data | Views
+Create a view `v_order_totals(order_id, customer_id, order_date, status, total)` with the total rounded to 2 decimals. The checker reads `SELECT COUNT(*), ROUND(SUM(total), 2) FROM v_order_totals WHERE status = 'completed'`.
+--- solution
+CREATE VIEW v_order_totals AS
+SELECT o.order_id, o.customer_id, o.order_date, o.status, ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS total
+FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+GROUP BY o.order_id, o.customer_id, o.order_date, o.status;
+--- check
+SELECT COUNT(*), ROUND(SUM(total), 2) FROM v_order_totals WHERE status = 'completed';
+
+=== m09 | 10 Changing data | DELETE with RETURNING
+Delete every `page_view` event that has no product, using `DELETE ... RETURNING event_id` so you can see what was removed. The checker then counts the events left per type.
+--- solution
+DELETE FROM events WHERE event_type = 'page_view' AND product_id IS NULL RETURNING event_id;
+--- check
+SELECT event_type, COUNT(*) FROM events GROUP BY event_type ORDER BY event_type;
+--- options
+ordered
+
+=== x01 | 11 Analytics patterns | Gaps and islands: login streaks
+Using `daily_logins`, find each customer's longest run of consecutive login days. Return `customer_id`, `longest_streak`, for all customers in the table.
+--- hint
+Within a streak, `julianday(login_date) - ROW_NUMBER()` is constant. Group by customer and that difference to get each island's length.
+--- solution
+WITH g AS (
+  SELECT customer_id, login_date,
+         julianday(login_date) - ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY login_date) AS grp
+  FROM daily_logins
+), islands AS (SELECT customer_id, grp, COUNT(*) AS len FROM g GROUP BY customer_id, grp)
+SELECT customer_id, MAX(len) FROM islands GROUP BY customer_id;
+
+=== x02 | 11 Analytics patterns | Gaps and islands: list streaks
+For customer with the smallest id in `daily_logins`, list each streak as `streak_start, streak_end, days`, in date order.
+--- solution
+WITH c AS (SELECT MIN(customer_id) AS id FROM daily_logins),
+g AS (
+  SELECT login_date, julianday(login_date) - ROW_NUMBER() OVER (ORDER BY login_date) AS grp
+  FROM daily_logins WHERE customer_id = (SELECT id FROM c)
+)
+SELECT MIN(login_date), MAX(login_date), COUNT(*) FROM g GROUP BY grp ORDER BY MIN(login_date);
+--- options
+ordered
+
+=== x03 | 11 Analytics patterns | Sessionization
+A new session starts when a customer's event comes more than 30 minutes after their previous event. Return the total number of sessions across all events.
+--- hint
+Use LAG to get the previous event_time, flag a new session when the gap > 30 min (or no previous event), and sum the flags. In SQLite, minutes between two timestamps = `(julianday(a) - julianday(b)) * 1440`.
+--- solution
+WITH e AS (
+  SELECT customer_id, event_time, LAG(event_time) OVER (PARTITION BY customer_id ORDER BY event_time, event_id) AS prev FROM events
+)
+SELECT SUM(CASE WHEN prev IS NULL OR (julianday(event_time) - julianday(prev)) * 1440 > 30 THEN 1 ELSE 0 END) FROM e;
+
+=== x04 | 11 Analytics patterns | Session ids
+Give every event a `session_id` per customer (1, 2, 3, ...) using the 30-minute rule, then return `customer_id`, number of sessions and average events per session (2 decimals), for customer ids under 40, ordered by customer_id.
+--- hint
+A running SUM of the new-session flag gives the session number.
+--- solution
+WITH e AS (
+  SELECT customer_id, event_id, event_time, LAG(event_time) OVER (PARTITION BY customer_id ORDER BY event_time, event_id) AS prev FROM events
+), f AS (
+  SELECT *, CASE WHEN prev IS NULL OR (julianday(event_time) - julianday(prev)) * 1440 > 30 THEN 1 ELSE 0 END AS is_new FROM e
+), s AS (
+  SELECT *, SUM(is_new) OVER (PARTITION BY customer_id ORDER BY event_time, event_id) AS session_id FROM f
+)
+SELECT customer_id, MAX(session_id), ROUND(COUNT(*) * 1.0 / MAX(session_id), 2) FROM s
+WHERE customer_id < 40 GROUP BY customer_id ORDER BY customer_id;
+--- options
+ordered
+
+=== x05 | 11 Analytics patterns | Funnel
+For the week of 2025-12-01 to 2025-12-07 (by event_time date), count distinct customers reaching each step: `page_view`, `product_view`, `add_to_cart`, `checkout`, `purchase`. Return `step, customers, pct_of_first` (1 decimal), in funnel order.
+--- solution
+WITH steps(step, pos) AS (VALUES ('page_view',1),('product_view',2),('add_to_cart',3),('checkout',4),('purchase',5)),
+c AS (SELECT s.step, s.pos, COUNT(DISTINCT e.customer_id) AS customers FROM steps s LEFT JOIN events e ON e.event_type = s.step AND date(e.event_time) BETWEEN '2025-12-01' AND '2025-12-07' GROUP BY s.step, s.pos)
+SELECT step, customers, ROUND(100.0 * customers / FIRST_VALUE(customers) OVER (ORDER BY pos), 1) FROM c ORDER BY pos;
+--- options
+ordered
+
+=== x06 | 11 Analytics patterns | Cohort retention
+Group customers into cohorts by the month of their first order. For each cohort month in 2025, return `cohort`, the cohort size, and how many of them ordered again 1, 2 and 3 months after their first month (`m1`, `m2`, `m3`), ordered by cohort.
+--- hint
+Month index = `(year2 - year1) * 12 + (month2 - month1)`. Build first_month per customer, then one row per (customer, month with an order), then count distinct customers per (cohort, month offset).
+--- solution
+WITH firsts AS (SELECT customer_id, MIN(strftime('%Y-%m', order_date)) AS cohort FROM orders GROUP BY customer_id),
+activity AS (SELECT DISTINCT customer_id, strftime('%Y-%m', order_date) AS month FROM orders),
+j AS (
+  SELECT f.cohort, a.customer_id,
+    (CAST(substr(a.month, 1, 4) AS INTEGER) - CAST(substr(f.cohort, 1, 4) AS INTEGER)) * 12
+     + CAST(substr(a.month, 6, 2) AS INTEGER) - CAST(substr(f.cohort, 6, 2) AS INTEGER) AS k
+  FROM firsts f JOIN activity a ON a.customer_id = f.customer_id
+)
+SELECT cohort, COUNT(DISTINCT CASE WHEN k = 0 THEN customer_id END),
+  COUNT(DISTINCT CASE WHEN k = 1 THEN customer_id END), COUNT(DISTINCT CASE WHEN k = 2 THEN customer_id END),
+  COUNT(DISTINCT CASE WHEN k = 3 THEN customer_id END)
+FROM j WHERE cohort LIKE '2025-%' GROUP BY cohort ORDER BY cohort;
+--- options
+ordered
+
+=== x07 | 11 Analytics patterns | Monthly recurring revenue
+A subscription contributes its `monthly_fee` to a month if it was active on the first day of that month (start_date <= first day and (end_date is NULL or end_date > first day)). Return MRR for each month of 2025 as `month, active_subs, mrr` (2 decimals), using a month spine.
+--- solution
+WITH RECURSIVE months(m) AS (SELECT '2025-01-01' UNION ALL SELECT date(m, '+1 month') FROM months WHERE m < '2025-12-01')
+SELECT m, COUNT(s.subscription_id), ROUND(COALESCE(SUM(s.monthly_fee), 0), 2)
+FROM months LEFT JOIN subscriptions s ON s.start_date <= m AND (s.end_date IS NULL OR s.end_date > m)
+GROUP BY m ORDER BY m;
+--- options
+ordered
+
+=== x08 | 11 Analytics patterns | Gaps and islands: membership periods
+Some customers subscribed, lapsed and came back. Merge each customer's overlapping or touching subscriptions into continuous membership periods. Return the number of customers who have more than one membership period.
+--- hint
+Sort by start_date; a new island starts when start_date > the max end_date seen so far for that customer (`MAX(COALESCE(end_date,'9999-12-31')) OVER (... ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)`).
+--- solution
+WITH s AS (
+  SELECT customer_id, start_date, COALESCE(end_date, '9999-12-31') AS end_date,
+         MAX(COALESCE(end_date, '9999-12-31')) OVER (PARTITION BY customer_id ORDER BY start_date ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_max_end
+  FROM subscriptions
+), f AS (
+  SELECT *, CASE WHEN prev_max_end IS NULL OR start_date > prev_max_end THEN 1 ELSE 0 END AS new_period FROM s
+), periods AS (SELECT customer_id, SUM(new_period) AS n FROM f GROUP BY customer_id)
+SELECT COUNT(*) FROM periods WHERE n > 1;
+
+=== x09 | 11 Analytics patterns | Repeat purchase rate
+Of customers who placed at least one completed order, what percentage placed 2 or more completed orders? Return one number with 1 decimal.
+--- solution
+WITH n AS (SELECT customer_id, COUNT(*) AS c FROM orders WHERE status = 'completed' GROUP BY customer_id)
+SELECT ROUND(100.0 * SUM(CASE WHEN c >= 2 THEN 1 ELSE 0 END) / COUNT(*), 1) FROM n;
+
+=== x10 | 11 Analytics patterns | Market basket pairs
+Which pairs of products are bought together in the same order most often? Return the top 5 pairs as `product_a, product_b, orders` (product ids, a < b), most frequent first, ties by product_a then product_b.
+--- solution
+SELECT a.product_id, b.product_id, COUNT(*) AS orders
+FROM order_items a JOIN order_items b ON a.order_id = b.order_id AND a.product_id < b.product_id
+GROUP BY a.product_id, b.product_id ORDER BY orders DESC, a.product_id, b.product_id LIMIT 5;
+--- options
+ordered
+
+=== x11 | 11 Analytics patterns | Year over year
+For each month number 1 to 12, return `month_num`, order count in 2024 `orders_2024` and in 2025 `orders_2025`, and the growth percentage (1 decimal), in month order.
+--- solution
+WITH m AS (
+  SELECT CAST(strftime('%m', order_date) AS INTEGER) AS month_num,
+    SUM(CASE WHEN order_date LIKE '2024-%' THEN 1 ELSE 0 END) AS y24,
+    SUM(CASE WHEN order_date LIKE '2025-%' THEN 1 ELSE 0 END) AS y25
+  FROM orders GROUP BY month_num
+)
+SELECT month_num, y24, y25, ROUND(100.0 * (y25 - y24) / NULLIF(y24, 0), 1) FROM m ORDER BY month_num;
+--- options
+ordered
+
+=== x12 | 11 Analytics patterns | RFM segmentation
+For customers with completed/shipped orders, compute recency (days from last such order to 2026-01-01), frequency (number of such orders) and monetary (net revenue). Score each from 1 to 3 with NTILE(3) where 3 is best (recent, frequent, high spend; ties by customer_id). Return the number of customers with scores 3,3,3 as one number.
+--- solution
+WITH t AS (
+  SELECT o.customer_id, o.order_id, o.order_date, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS total
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id WHERE o.status IN ('completed','shipped')
+  GROUP BY o.order_id, o.customer_id, o.order_date
+), base AS (
+  SELECT customer_id, julianday('2026-01-01') - julianday(MAX(order_date)) AS recency, COUNT(*) AS frequency, SUM(total) AS monetary
+  FROM t GROUP BY customer_id
+), scored AS (
+  SELECT customer_id,
+    NTILE(3) OVER (ORDER BY recency DESC, customer_id) AS r,
+    NTILE(3) OVER (ORDER BY frequency, customer_id) AS f,
+    NTILE(3) OVER (ORDER BY monetary, customer_id) AS m
+  FROM base
+)
+SELECT COUNT(*) FROM scored WHERE r = 3 AND f = 3 AND m = 3;
+
+=== x13 | 11 Analytics patterns | Time from view to purchase
+For each purchase event, find the most recent `product_view` of the same product by the same customer at or before the purchase. Return the average number of minutes from that view to the purchase, rounded to 1 decimal (skip purchases with no earlier view).
+--- solution
+WITH p AS (SELECT event_id, customer_id, product_id, event_time FROM events WHERE event_type = 'purchase'),
+v AS (
+  SELECT p.event_id,
+    (SELECT MAX(e.event_time) FROM events e WHERE e.customer_id = p.customer_id AND e.product_id = p.product_id
+       AND e.event_type = 'product_view' AND e.event_time <= p.event_time) AS viewed_at, p.event_time
+  FROM p
+)
+SELECT ROUND(AVG((julianday(event_time) - julianday(viewed_at)) * 1440), 1) FROM v WHERE viewed_at IS NOT NULL;
+
+=== x14 | 11 Analytics patterns | Pareto: top 20% of customers
+What share of net revenue (completed/shipped) comes from the top 20% of customers by revenue? Return the percentage with 1 decimal. Use NTILE(5).
+--- solution
+WITH r AS (
+  SELECT o.customer_id, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS rev
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id WHERE o.status IN ('completed','shipped') GROUP BY o.customer_id
+), q AS (SELECT rev, NTILE(5) OVER (ORDER BY rev DESC) AS bucket FROM r)
+SELECT ROUND(100 * SUM(CASE WHEN bucket = 1 THEN rev END) / SUM(rev), 1) FROM q;
+
+=== e01 | 12 Analytics engineering (dbt style) | Staging model
+Write the body of a dbt staging model `stg_crm__contacts` on `raw_crm_contacts`: rename and clean only, no joins. Output `customer_id` (integer from contact_id), `full_name` (trimmed, title case is not needed: lower case), `email` (trim, lower, empty = NULL), `phone`, `country_code` (trim, upper), `updated_at`, `loaded_at` (from `_loaded_at`). Drop rows with a NULL or empty contact_id, and drop the test row with email `test@test.com`. Keep duplicates (staging doesn't dedupe here).
+--- solution
+WITH source AS (SELECT * FROM raw_crm_contacts),
+renamed AS (
+  SELECT CAST(SUBSTR(contact_id, 3) AS INTEGER) AS customer_id,
+         LOWER(TRIM(full_name)) AS full_name,
+         NULLIF(LOWER(TRIM(email)), '') AS email,
+         phone,
+         UPPER(TRIM(country_code)) AS country_code,
+         updated_at,
+         _loaded_at AS loaded_at
+  FROM source
+  WHERE contact_id IS NOT NULL AND contact_id <> '' AND COALESCE(email, '') <> 'test@test.com'
+)
+SELECT * FROM renamed;
+
+=== e02 | 12 Analytics engineering (dbt style) | Test: unique
+A dbt `unique` test compiles to a query that returns the duplicated values; zero rows means it passes. Write that test for `contact_id` in `raw_crm_contacts` (non-empty ids): return `contact_id, n_records` for every duplicated id.
+--- solution
+SELECT contact_id, COUNT(*) AS n_records FROM raw_crm_contacts
+WHERE contact_id IS NOT NULL AND contact_id <> '' GROUP BY contact_id HAVING COUNT(*) > 1;
+
+=== e03 | 12 Analytics engineering (dbt style) | Test: relationships
+Write the `relationships` test that checks every `orders.employee_id` exists in `employees.employee_id`. Return the failing child values as one column `employee_id`. (The setup sneaks in a bad row.)
+--- setup
+INSERT INTO orders VALUES (99002, 5, '2025-12-30', 'completed', 'store', 99)
+--- hint
+dbt ignores NULL child values in this test.
+--- solution
+SELECT o.employee_id FROM orders o LEFT JOIN employees e ON e.employee_id = o.employee_id
+WHERE o.employee_id IS NOT NULL AND e.employee_id IS NULL;
+
+=== e04 | 12 Analytics engineering (dbt style) | Test: accepted values
+Write an `accepted_values` test on `orders.status` for the values completed, shipped, cancelled, returned. Return each unexpected value with its count as `value_field, n_records`.
+--- solution
+SELECT status AS value_field, COUNT(*) AS n_records FROM orders
+WHERE status NOT IN ('completed', 'shipped', 'cancelled', 'returned') GROUP BY status;
+
+=== e05 | 12 Analytics engineering (dbt style) | Deduplicated intermediate model
+Build `int_contacts_deduped`: from the cleaned staging logic (e01), keep one row per customer_id, the latest by updated_at then loaded_at. Return `customer_id, email, country_code, updated_at`.
+--- solution
+WITH stg AS (
+  SELECT CAST(SUBSTR(contact_id, 3) AS INTEGER) AS customer_id, NULLIF(LOWER(TRIM(email)), '') AS email,
+         UPPER(TRIM(country_code)) AS country_code, updated_at, _loaded_at AS loaded_at
+  FROM raw_crm_contacts WHERE contact_id IS NOT NULL AND contact_id <> '' AND COALESCE(email, '') <> 'test@test.com'
+), ranked AS (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY updated_at DESC, loaded_at DESC) AS rn FROM stg
+)
+SELECT customer_id, email, country_code, updated_at FROM ranked WHERE rn = 1;
+
+=== e06 | 12 Analytics engineering (dbt style) | Surrogate key
+`dbt_utils.generate_surrogate_key(['order_id', 'line_no'])` hashes the concatenated columns. SQLite has no md5, so build the key as text: `order_id || '-' || line_no`. Return `order_item_key, order_id, line_no, product_id` for order items. Then, in the sandbox, write the unique test on your key and check it returns nothing.
+--- solution
+SELECT order_id || '-' || line_no AS order_item_key, order_id, line_no, product_id FROM order_items;
+
+=== e07 | 12 Analytics engineering (dbt style) | Fact table at the right grain
+Build `fct_order_items` at the grain of one row per order line: `order_id, line_no, customer_id, order_date, product_id, category_id, quantity, gross_amount, discount_amount, net_amount` (amounts 2 decimals). Only completed and shipped orders.
+--- solution
+SELECT oi.order_id, oi.line_no, o.customer_id, o.order_date, oi.product_id, p.category_id, oi.quantity,
+  ROUND(oi.quantity * oi.unit_price, 2), ROUND(oi.quantity * oi.unit_price * oi.discount, 2),
+  ROUND(oi.quantity * oi.unit_price * (1 - oi.discount), 2)
+FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN products p ON p.product_id = oi.product_id
+WHERE o.status IN ('completed', 'shipped');
+
+=== e08 | 12 Analytics engineering (dbt style) | Dimension with SCD2
+Build `dim_customers_history` from `segment_changes` with `customer_sk` (customer_id || '-' || valid_from), `customer_id`, `segment`, `valid_from`, `valid_to` (NULL when current) and `is_current` (1/0). This is the shape a dbt snapshot gives you (`dbt_valid_from`, `dbt_valid_to`).
+--- solution
+SELECT customer_id || '-' || changed_at, customer_id, segment, changed_at,
+  LEAD(changed_at) OVER (PARTITION BY customer_id ORDER BY changed_at),
+  CASE WHEN LEAD(changed_at) OVER (PARTITION BY customer_id ORDER BY changed_at) IS NULL THEN 1 ELSE 0 END
+FROM segment_changes;
+
+=== e09 | 12 Analytics engineering (dbt style) | Point-in-time join
+Using the SCD2 ranges from e08, attribute each 2025 order to the segment the customer was in on the order date. Return `segment` and the number of 2025 orders, ordered by segment.
+--- hint
+Join on `customer_id` AND `order_date >= valid_from AND (valid_to IS NULL OR order_date < valid_to)`.
+--- solution
+WITH h AS (
+  SELECT customer_id, segment, changed_at AS valid_from, LEAD(changed_at) OVER (PARTITION BY customer_id ORDER BY changed_at) AS valid_to
+  FROM segment_changes
+)
+SELECT h.segment, COUNT(*) FROM orders o JOIN h ON h.customer_id = o.customer_id
+  AND o.order_date >= h.valid_from AND (h.valid_to IS NULL OR o.order_date < h.valid_to)
+WHERE o.order_date LIKE '2025-%' GROUP BY h.segment ORDER BY h.segment;
+--- options
+ordered
+
+=== e10 | 12 Analytics engineering (dbt style) | Incremental model logic
+An incremental model only processes new rows. The setup creates `fct_payments` holding payments up to 2025-11-30. Write the incremental step: insert payments whose `paid_at` is later than the max `paid_at` already in the table (the `{% if is_incremental() %}` filter). The checker returns the row count and max paid_at.
+--- setup
+CREATE TABLE fct_payments AS SELECT payment_id, order_id, paid_at, amount FROM payments WHERE paid_at < '2025-12-01'
+--- solution
+INSERT INTO fct_payments
+SELECT payment_id, order_id, paid_at, amount FROM payments
+WHERE paid_at > (SELECT MAX(paid_at) FROM fct_payments);
+--- check
+SELECT COUNT(*), MAX(paid_at) FROM fct_payments;
+
+=== e11 | 12 Analytics engineering (dbt style) | Incremental merge with late updates
+A merge-strategy incremental model upserts on a `unique_key`. The setup creates `dim_contacts(customer_id PRIMARY KEY, email, updated_at)` loaded only from the `2025-12-01` CRM load. Merge in the `2025-12-02` load: for each customer keep the row with the newest updated_at, inserting new customers and updating existing ones only if the incoming row is newer. The checker returns count and number of distinct emails.
+--- setup
+CREATE TABLE dim_contacts(customer_id INTEGER PRIMARY KEY, email TEXT, updated_at TEXT);
+INSERT INTO dim_contacts SELECT customer_id, email, updated_at FROM (
+  SELECT CAST(SUBSTR(contact_id, 3) AS INTEGER) AS customer_id, NULLIF(LOWER(TRIM(email)), '') AS email, updated_at,
+         ROW_NUMBER() OVER (PARTITION BY contact_id ORDER BY updated_at DESC) AS rn
+  FROM raw_crm_contacts WHERE contact_id LIKE 'C-%' AND _loaded_at = '2025-12-01 02:00:00') WHERE rn = 1
+--- hint
+Dedupe the new batch first with ROW_NUMBER, then `INSERT ... ON CONFLICT (customer_id) DO UPDATE SET ... WHERE excluded.updated_at > dim_contacts.updated_at`. In SQLite an upsert from a SELECT needs `WHERE true` before ON CONFLICT.
+--- solution
+INSERT INTO dim_contacts (customer_id, email, updated_at)
+SELECT customer_id, email, updated_at FROM (
+  SELECT CAST(SUBSTR(contact_id, 3) AS INTEGER) AS customer_id, NULLIF(LOWER(TRIM(email)), '') AS email, updated_at,
+         ROW_NUMBER() OVER (PARTITION BY contact_id ORDER BY updated_at DESC) AS rn
+  FROM raw_crm_contacts WHERE contact_id LIKE 'C-%' AND _loaded_at = '2025-12-02 02:00:00'
+) WHERE rn = 1
+ON CONFLICT (customer_id) DO UPDATE SET email = excluded.email, updated_at = excluded.updated_at
+WHERE excluded.updated_at > dim_contacts.updated_at;
+--- check
+SELECT COUNT(*), COUNT(DISTINCT email), MAX(updated_at) FROM dim_contacts;
+
+=== e12 | 12 Analytics engineering (dbt style) | Source freshness
+dbt source freshness compares `MAX(loaded_at_field)` to now. Return the max `_loaded_at` from raw_crm_contacts and the hours between it and `'2025-12-03 08:00:00'` as `hours_stale` (1 decimal). A `warn_after: {count: 24, period: hour}` would warn here.
+--- solution
+SELECT MAX(_loaded_at), ROUND((julianday('2025-12-03 08:00:00') - julianday(MAX(_loaded_at))) * 24, 1) FROM raw_crm_contacts;
+
+=== e13 | 12 Analytics engineering (dbt style) | Singular test
+Write a singular test (a .sql file in `tests/`) asserting that no order line has a quantity of 0 or less, or a discount above 50%. Return the offending `order_id, line_no` rows; zero rows means it passes. The setup adds two bad rows.
+--- setup
+INSERT INTO order_items VALUES (1, 9, 1, 0, 899, 0); INSERT INTO order_items VALUES (2, 9, 2, 1, 1199, 0.75)
+--- solution
+SELECT order_id, line_no FROM order_items WHERE quantity <= 0 OR discount > 0.5;
+
+=== e14 | 12 Analytics engineering (dbt style) | Mart: daily KPIs
+Build `mart_daily_kpis` for December 2025 with a date spine: `day`, `orders` (completed/shipped), `customers` (distinct, same orders), `revenue` (2 decimals, 0 when none), `new_customers` (customers whose first-ever order was that day), every day present, in order.
+--- solution
+WITH RECURSIVE spine(day) AS (SELECT '2025-12-01' UNION ALL SELECT date(day, '+1 day') FROM spine WHERE day < '2025-12-31'),
+good AS (
+  SELECT o.order_id, o.customer_id, o.order_date, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS total
+  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id WHERE o.status IN ('completed','shipped')
+  GROUP BY o.order_id, o.customer_id, o.order_date
+),
+firsts AS (SELECT customer_id, MIN(order_date) AS first_day FROM orders GROUP BY customer_id),
+daily AS (SELECT order_date AS day, COUNT(*) AS orders, COUNT(DISTINCT customer_id) AS customers, SUM(total) AS revenue FROM good GROUP BY order_date),
+newc AS (SELECT first_day AS day, COUNT(*) AS n FROM firsts GROUP BY first_day)
+SELECT s.day, COALESCE(d.orders, 0), COALESCE(d.customers, 0), ROUND(COALESCE(d.revenue, 0), 2), COALESCE(n.n, 0)
+FROM spine s LEFT JOIN daily d ON d.day = s.day LEFT JOIN newc n ON n.day = s.day ORDER BY s.day;
+--- options
+ordered
+
+=== p01 | 13 Performance | Read a query plan
+Run `EXPLAIN QUERY PLAN SELECT * FROM orders WHERE customer_id = 42` (or tap Explain). It should say `SEARCH orders USING INDEX ix_orders_customer`. For the exercise, return the orders of customer 42 with `order_id, order_date`.
+--- solution
+SELECT order_id, order_date FROM orders WHERE customer_id = 42;
+
+=== p02 | 13 Performance | Create an index
+Queries filtering `events` by `event_type` scan the whole table. Create an index named `ix_events_type` on `events(event_type)`, then count purchase events. The checker confirms the index exists and the count.
+--- solution
+CREATE INDEX ix_events_type ON events(event_type);
+SELECT COUNT(*) FROM events WHERE event_type = 'purchase';
+--- check
+SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'ix_events_type'), (SELECT COUNT(*) FROM events WHERE event_type = 'purchase');
+
+=== p03 | 13 Performance | Sargable predicates
+`WHERE strftime('%Y', order_date) = '2025'` can't use an index on order_date because it wraps the column in a function. Rewrite it as a range on the bare column and return the 2025 order count.
+--- solution
+SELECT COUNT(*) FROM orders WHERE order_date >= '2025-01-01' AND order_date < '2026-01-01';
+
+=== p04 | 13 Performance | Covering index
+Create an index `ix_orders_cust_date` on `orders(customer_id, order_date)` and return each customer's latest order date as `customer_id, last_order`. With EXPLAIN you'll see `USING COVERING INDEX`, meaning the table itself isn't read. The checker confirms the index and the result count.
+--- solution
+CREATE INDEX ix_orders_cust_date ON orders(customer_id, order_date);
+SELECT customer_id, MAX(order_date) FROM orders GROUP BY customer_id;
+--- check
+SELECT (SELECT COUNT(*) FROM sqlite_master WHERE name = 'ix_orders_cust_date'), (SELECT COUNT(DISTINCT customer_id) FROM orders);
+
+=== p05 | 13 Performance | EXISTS instead of COUNT
+"Does customer 10 have any returned order?" Write it so the database can stop at the first match: return 1 or 0 using EXISTS.
+--- solution
+SELECT EXISTS (SELECT 1 FROM orders WHERE customer_id = 10 AND status = 'returned');
