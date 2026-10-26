@@ -3,6 +3,19 @@
 All notable changes to Kardo are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/)
 and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-10-26
+
+Android support across screen sizes.
+
+### Added
+- Layout size classes for Android phones and foldables: compact (360px and below, including the Galaxy Z Fold cover screen), standard (Pixel and Galaxy S/Ultra), wide (unfolded Z Fold and Pixel Fold, tablets) and short landscape.
+- Maskable app icon, so the home-screen icon fills Android's adaptive icon shapes.
+
+### Changed
+- The app height follows Chrome's collapsing address bar (`dvh`), and the on-screen keyboard resizes the page instead of covering the SQL editor.
+- Landscape phones get a compact top bar and single-line answer buttons, giving the card about 25% more room.
+- Wide screens use a wider column and a four-tile stats row.
+
 ## [1.0.0] - 2026-10-26
 
 First public release.

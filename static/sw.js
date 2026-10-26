@@ -1,5 +1,5 @@
 // Keeps the app shell available when the network is slow. Study data always comes from the server.
-const CACHE = "kardo-shell-v2";
+const CACHE = "kardo-shell-v3";
 const SHELL = ["/", "/app.js", "/lab.js", "/style.css", "/manifest.webmanifest", "/icons/icon.svg", "/icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {

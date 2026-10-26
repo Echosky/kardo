@@ -44,7 +44,7 @@ body {
 button, input, select { font: inherit; color: inherit; }
 a { color: var(--accent); }
 
-#app { min-height: 100%; display: flex; flex-direction: column; }
+#app { min-height: 100%; min-height: 100dvh; display: flex; flex-direction: column; }
 .screen {
   flex: 1; display: flex; flex-direction: column; width: 100%; max-width: 720px; margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 16px)
@@ -249,3 +249,42 @@ a { color: var(--accent); }
 .home-lab svg { width: 26px; height: 26px; color: var(--accent); flex: none; }
 .home-lab .name b { display: block; }
 .home-lab .name span { font-size: 13px; color: var(--muted); }
+
+/* Screen size classes. Android phones cluster into a few CSS-pixel widths, so the layout targets ranges, not models:
+   compact  <= 360px  Galaxy A/S base models, Z Fold cover screen (344px), Z Flip
+   standard 361-480px Pixel 6-9 and Pixel a-series (412px), Galaxy S Plus/Ultra (384px), Pixel Pro XL
+   wide     >= 600px  Z Fold and Pixel Fold unfolded, Android tablets
+   short    <= 500px tall in landscape: any phone turned sideways */
+@media (max-width: 360px) {
+  .screen { padding-left: calc(env(safe-area-inset-left) + 10px); padding-right: calc(env(safe-area-inset-right) + 10px); }
+  .grades { gap: 6px; }
+  .grade { font-size: 14px; min-height: 58px; }
+  .counts { gap: 7px; font-size: 14px; }
+  .big-counts b, .tile b { font-size: 22px; }
+  .overview, .panel { padding: 14px; }
+  .lab-two, .lab-nav { gap: 8px; }
+}
+@media (min-width: 600px) {
+  .screen { max-width: 760px; padding-left: calc(env(safe-area-inset-left) + 24px); padding-right: calc(env(safe-area-inset-right) + 24px); }
+  .tiles { grid-template-columns: repeat(4, 1fr); }
+  .grade { min-height: 68px; font-size: 16px; }
+  .sheet { border-radius: 18px; margin-bottom: 24px; }
+  .sheet-backdrop { align-items: center; }
+}
+@media (min-width: 900px) {
+  .screen { max-width: 880px; }
+  .bars { height: 160px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .screen { padding-top: calc(env(safe-area-inset-top) + 2px); }
+  .topbar { min-height: 40px; margin-bottom: 4px; }
+  .topbar h1 { font-size: 19px; }
+  .icon-btn { width: 40px; height: 40px; }
+  .deck-path { display: none; }
+  .card-wrap { min-height: 120px; }
+  .answer-bar { padding: 8px 0 calc(env(safe-area-inset-bottom) + 8px); }
+  .grade { min-height: 46px; grid-auto-flow: column; gap: 6px; align-items: baseline; }
+  .sheet { max-height: 96vh; }
+  .lab-grid { max-height: 80vh; }
+  .lab-sql { min-height: 110px; }
+}

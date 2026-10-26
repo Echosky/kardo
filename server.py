@@ -886,7 +886,7 @@ def import_file(data, filename, deck_name=None):
 
 class Handler(BaseHTTPRequestHandler):
     """HTTP request handler: the JSON API under /api/, imported media under /media/, and the web app itself."""
-    server_version = "Kardo/1.0"
+    server_version = "Kardo/1.1"
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):
